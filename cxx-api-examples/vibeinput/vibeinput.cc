@@ -9,6 +9,10 @@
 #include <queue>
 #include <vector>
 
+#include <cstring>
+#include <filesystem>
+#include <string>
+
 #include "portaudio.h"       // NOLINT
 // #include "sherpa-display.h"  // NOLINT
 #include "sherpa-onnx/c-api/cxx-api.h"
@@ -27,7 +31,7 @@ static void Handler(int32_t /*sig*/) {
 
 static int32_t RecordCallback(const void *input_buffer,
                               void * /*output_buffer*/,
-                              unsigned long frames_per_buffer,  // NOLINT
+                              unsigned long frames_per_buffer, // NOLINT
                               const PaStreamCallbackTimeInfo * /*time_info*/,
                               PaStreamCallbackFlags /*status_flags*/,
                               void * /*user_data*/) {
@@ -40,10 +44,74 @@ static int32_t RecordCallback(const void *input_buffer,
   return stop ? paComplete : paContinue;
 }
 
-static sherpa_onnx::cxx::VoiceActivityDetector CreateVad() {
-  using namespace sherpa_onnx::cxx;  // NOLINT
+// ---------- Path utilities and CLI parsing ----------
+static std::string GetHomeDir() {
+  if (const char *home = std::getenv("HOME")) return std::string(home);
+  if (const char *userprofile = std::getenv("USERPROFILE"))
+    return std::string(userprofile);
+  const char *homedrive = std::getenv("HOMEDRIVE");
+  const char *homepath = std::getenv("HOMEPATH");
+  if (homedrive && homepath) return
+      std::string(homedrive) + std::string(homepath);
+  return std::string();
+}
+
+static std::string ExpandUser(const std::string &path) {
+  if (!path.empty() && path[0] == '~') {
+    std::string home = GetHomeDir();
+    if (!home.empty()) {
+      if (path.size() == 1) return home;
+      if (path.size() > 1 && (path[1] == '/' || path[1] == '\\')) {
+        return (std::filesystem::path(home) / path.substr(2)).string();
+      }
+    }
+  }
+  return path;
+}
+
+static bool FileExists(const std::filesystem::path &p) {
+  std::error_code ec;
+  return std::filesystem::exists(p, ec) &&
+         std::filesystem::is_regular_file(p, ec);
+}
+
+static std::string ResolveModelFile(const std::string &input_name) {
+  namespace fs = std::filesystem;
+  // 1) If input is an existing path (after ~ expansion), use it
+  fs::path p = ExpandUser(input_name);
+  if (FileExists(p)) return p.string();
+
+  // 2) If user supplied an absolute or relative path but it doesn't exist, fail
+  if (p.is_absolute() || p.has_parent_path()) {
+    return std::string();
+  }
+
+  // 3) Search ./model-dir/<filename>
+  fs::path p1 = fs::current_path() / "model-dir" / input_name;
+  if (FileExists(p1)) return p1.string();
+
+  // 4) Search ~/model-dir/<filename>
+  std::string home = GetHomeDir();
+  if (!home.empty()) {
+    fs::path p2 = fs::path(home) / "model-dir" / input_name;
+    if (FileExists(p2)) return p2.string();
+  }
+
+  return std::string();
+}
+
+static void PrintUsage(const char *prog) {
+  std::cout << "Usage: " << prog
+      << " [--vad-model filename] [--asr-model filename] [--tokens filename]\n"
+      << "Search order for filenames: ./model-dir, ~/model-dir, or an explicit path.\n"
+      << "Defaults: --vad-model silero_vad.onnx --asr-model model.int8.onnx --tokens tokens.txt\n";
+}
+
+static sherpa_onnx::cxx::VoiceActivityDetector CreateVad(
+    const std::string &vad_model_path) {
+  using namespace sherpa_onnx::cxx; // NOLINT
   VadModelConfig config;
-  config.silero_vad.model = "./silero_vad.onnx";
+  config.silero_vad.model = vad_model_path;
   config.silero_vad.threshold = 0.5;
   config.silero_vad.min_silence_duration = 0.1;
   config.silero_vad.min_speech_duration = 0.25;
@@ -60,16 +128,15 @@ static sherpa_onnx::cxx::VoiceActivityDetector CreateVad() {
   return vad;
 }
 
-static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer() {
-  using namespace sherpa_onnx::cxx;  // NOLINT
+static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
+    const std::string &asr_model_path, const std::string &tokens_path) {
+  using namespace sherpa_onnx::cxx; // NOLINT
   OfflineRecognizerConfig config;
 
-  config.model_config.sense_voice.model =
-      "./sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx";
-  config.model_config.sense_voice.use_itn = false;
+  config.model_config.sense_voice.model = asr_model_path;
+  config.model_config.sense_voice.use_itn = true;
   config.model_config.sense_voice.language = "auto";
-  config.model_config.tokens =
-      "./sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt";
+  config.model_config.tokens = tokens_path;
 
   config.model_config.num_threads = 2;
   config.model_config.debug = false;
@@ -84,20 +151,67 @@ static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer() {
   return recognizer;
 }
 
-int32_t main() {
+int32_t main(int argc, char *argv[]) {
   signal(SIGINT, Handler);
 
-  using namespace sherpa_onnx::cxx;  // NOLINT
+  using namespace sherpa_onnx::cxx; // NOLINT
 
-  auto vad = CreateVad();
-  auto recognizer = CreateOfflineRecognizer();
+  // Defaults per current code
+  std::string vad_model_name = "silero_vad.onnx";
+  std::string asr_model_name = "model.int8.onnx";
+  std::string tokens_name = "tokens.txt";
+
+  for (int i = 1; i < argc; ++i) {
+    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") ==
+        0) {
+      PrintUsage(argv[0]);
+      return 0;
+    } else if (std::strcmp(argv[i], "--vad-model") == 0 && i + 1 < argc) {
+      vad_model_name = argv[++i];
+    } else if (std::strcmp(argv[i], "--asr-model") == 0 && i + 1 < argc) {
+      asr_model_name = argv[++i];
+    } else if (std::strcmp(argv[i], "--tokens") == 0 && i + 1 < argc) {
+      tokens_name = argv[++i];
+    } else {
+      std::cerr << "Unknown or incomplete argument: " << argv[i] << "\n";
+      PrintUsage(argv[0]);
+      return -1;
+    }
+  }
+
+  std::string vad_model_path = ResolveModelFile(vad_model_name);
+  if (vad_model_path.empty()) {
+    std::cerr << "Cannot find VAD model '" << vad_model_name
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+    return -1;
+  }
+  std::string asr_model_path = ResolveModelFile(asr_model_name);
+  if (asr_model_path.empty()) {
+    std::cerr << "Cannot find ASR model '" << asr_model_name
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+    return -1;
+  }
+  std::string tokens_path = ResolveModelFile(tokens_name);
+  if (tokens_path.empty()) {
+    std::cerr << "Cannot find tokens file '" << tokens_name
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+    return -1;
+  }
+
+  std::cout << "Using models:\n"
+      << "  VAD:    " << vad_model_path << "\n"
+      << "  ASR:    " << asr_model_path << "\n"
+      << "  Tokens: " << tokens_path << "\n";
+
+  auto vad = CreateVad(vad_model_path);
+  auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
 
   sherpa_onnx::Microphone mic;
 
   PaDeviceIndex num_devices = Pa_GetDeviceCount();
   if (num_devices == 0) {
     std::cerr << "  If you are using Linux, please try "
-                 "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
+        "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
     return -1;
   }
 
@@ -131,7 +245,7 @@ int32_t main() {
     return -1;
   }
 
-  int32_t window_size = 512;  // samples, please don't change
+  int32_t window_size = 512; // samples, please don't change
 
   int32_t offset = 0;
   std::vector<float> buffer;
@@ -152,6 +266,10 @@ int32_t main() {
 
       if (stop) {
         break;
+      }
+
+      if (samples_queue.size() == 0) {
+        continue;
       }
 
       const auto &s = samples_queue.front();
@@ -182,18 +300,18 @@ int32_t main() {
     auto current_time = std::chrono::steady_clock::now();
     const float elapsed_seconds =
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time -
-                                                              started_time)
-            .count() /
+          started_time)
+        .count() /
         1000.;
 
-    if (speech_started && elapsed_seconds > 0.2) {
+    if (speech_started && elapsed_seconds > 0.4) {
       OfflineStream stream = recognizer.CreateStream();
       stream.AcceptWaveform(sample_rate, buffer.data(), buffer.size());
 
       recognizer.Decode(&stream);
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
-      std::cout <<"recognizer.GetResult="<< result.text << std::endl;
+      std::cout << "recognizer.GetResult 1=" << result.text << std::endl;
       // display.UpdateText(result.text);
       // display.Display();
 
@@ -213,7 +331,7 @@ int32_t main() {
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
 
-      std::cout<<"recognizer.GetResult="<< result.text << std::endl;
+      std::cout << "recognizer.GetResult 2=" << result.text << std::endl;
 
       // display.UpdateText(result.text);
       // display.FinalizeCurrentSentence();
