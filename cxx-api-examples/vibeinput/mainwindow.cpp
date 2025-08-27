@@ -5,20 +5,21 @@
 #include "preferenceform.h"
 
 #include <QDateTime>
- #include <QtCore/QObject>
- #include <QApplication>
- #include <QPainter>
- #include <QPixmap>
- #include <QAction>
- #include <QSystemTrayIcon>
- #include <QMenu>
- #include <QColor>
- #include <QPen>
+#include <QtCore/QObject>
+#include <QApplication>
+#include <QWidget>
+#include <QPainter>
+#include <QPixmap>
+#include <QAction>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QColor>
+#include <QPen>
 
 MainWindow *g_main_window = nullptr;
 
 void sync_display() {
-  auto w=g_main_window;
+  auto w = g_main_window;
   if (!w) {
     return;
   }
@@ -92,6 +93,8 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   g_main_window = this;
 
+  pref_form_ = new PreferenceForm(nullptr);
+
   // Setup system tray
   setup_tray();
 
@@ -103,7 +106,7 @@ MainWindow::~MainWindow() {
   g_main_window = nullptr;
   if (pref_form_) {
     pref_form_->deleteLater();
-    pref_form_=nullptr;
+    pref_form_ = nullptr;
   }
   delete ui;
 }
@@ -114,8 +117,8 @@ void MainWindow::setup_tray() {
   }
 
   // Build icons
-  icon_active_ = make_status_icon(QColor(0, 180, 0));   // green
-  icon_paused_ = make_status_icon(QColor(200, 0, 0));   // red
+  icon_active_ = make_status_icon(QColor(0, 180, 0)); // green
+  icon_paused_ = make_status_icon(QColor(200, 0, 0)); // red
 
   // Menu actions
   auto act_show = new QAction(tr("Show"), &tray_menu_);
@@ -144,13 +147,14 @@ void MainWindow::setup_tray() {
   tray_icon_.setToolTip(tr("VibeInput"));
   tray_icon_.show();
 
-  connect(&tray_icon_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason){
-    if (reason == QSystemTrayIcon::Trigger) {
-      this->show();
-      this->raise();
-      this->activateWindow();
-    }
-  });
+  connect(&tray_icon_, &QSystemTrayIcon::activated, this,
+          [this](QSystemTrayIcon::ActivationReason reason) {
+            if (reason == QSystemTrayIcon::Trigger) {
+              this->show();
+              this->raise();
+              this->activateWindow();
+            }
+          });
 }
 
 QIcon MainWindow::make_status_icon(const QColor &fill) const {
@@ -175,18 +179,18 @@ void MainWindow::on_ptn_pause_resume_clicked() {
 
   sync_display();
 }
-void MainWindow::on_action_Exit_triggered()
-{
+
+void MainWindow::on_action_Exit_triggered() {
   qApp->exit(0);
 }
 
 
-void MainWindow::on_action_Config_triggered()
-{
+void MainWindow::on_action_Config_triggered() {
   if (!pref_form_) {
     pref_form_ = new PreferenceForm(nullptr);
-    pref_form_->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(pref_form_, &QObject::destroyed, this, [this]() { pref_form_ = nullptr; });
+    // pref_form_->setAttribute(Qt::WA_DeleteOnClose, true);
+    // connect(pref_form_, &QObject::destroyed, this,
+    //         [this]() { pref_form_ = nullptr; });
   }
   pref_form_->show();
   pref_form_->raise();
