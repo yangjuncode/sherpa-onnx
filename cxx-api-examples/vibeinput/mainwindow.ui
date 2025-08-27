@@ -13,7 +13,27 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPlainTextEdit" name="ptd_tmp"/>
+      </item>
+      <item>
+       <widget class="QPushButton" name="ptn_pause_resume">
+        <property name="text">
+         <string>Pause</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QPlainTextEdit" name="ptd_input_log"/>
+    </item>
+   </layout>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -23,8 +43,46 @@
      <height>31</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="action_Config"/>
+    <addaction name="separator"/>
+    <addaction name="action_Exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_About">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="action_Content"/>
+    <addaction name="separator"/>
+    <addaction name="action_About"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_About"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_Content">
+   <property name="text">
+    <string>&amp;Content</string>
+   </property>
+  </action>
+  <action name="action_About">
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+  </action>
+  <action name="action_Exit">
+   <property name="text">
+    <string>&amp;Exit</string>
+   </property>
+  </action>
+  <action name="action_Config">
+   <property name="text">
+    <string>&amp;Preference</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

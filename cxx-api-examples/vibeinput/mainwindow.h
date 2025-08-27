@@ -12,12 +12,19 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+ public slots:
+    void sync_display();
+  void got_tmp_input(const std::string& txt);
+    void got_input(const std::string& txt);
 
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-private:
+   private slots:
+    void on_ptn_pause_resume_clicked();
+
+   private:
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H

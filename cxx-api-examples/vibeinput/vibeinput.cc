@@ -18,29 +18,23 @@
 #include <thread>
 #include <atomic>
 
-#ifdef HAVE_X11_HOTKEY
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
-#endif
-
 #include "typestr.h"
 
 #include "portaudio.h"       // NOLINT
 // #include "sherpa-display.h"  // NOLINT
 #include "sherpa-onnx/c-api/cxx-api.h"
 #include "sherpa-onnx/csrc/microphone.h"
+#include "vibeinput.h"
 
 std::queue<std::vector<float>> samples_queue;
 std::condition_variable condition_variable;
 std::mutex mutex;
-bool stop = false;
+static std::atomic<bool> g_stop{false};
 static std::atomic<bool> g_paused{false};
+static std::atomic<bool> g_running{false};
+static std::thread g_worker;
 
-static void Handler(int32_t /*sig*/) {
-  stop = true;
-  condition_variable.notify_one();
-  fprintf(stderr, "\nCaught Ctrl + C. Exiting...\n");
-}
+// No SIGINT handler for GUI; stopping is controlled via API
 
 static void TogglePause(const char *reason) {
   bool now = g_paused.load();
@@ -86,7 +80,7 @@ static int32_t RecordCallback(const void *input_buffer,
       reinterpret_cast<const float *>(input_buffer) + frames_per_buffer);
   condition_variable.notify_one();
 
-  return stop ? paComplete : paContinue;
+  return g_stop.load() ? paComplete : paContinue;
 }
 
 // ---------- Path utilities and CLI parsing ----------
@@ -155,6 +149,10 @@ static void ClearScreen() {
   (void)ret;
 }
 
+bool VibeInputIsPaused() {
+  return g_paused.load();
+}
+
 static void PrintUsage(const char *prog) {
   std::cout << "Usage: " << prog
       << " [--vad-model filename] [--asr-model filename] [--tokens filename]\n"
@@ -206,57 +204,38 @@ static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
   return recognizer;
 }
 
-int32_t main(int argc, char *argv[]) {
-  signal(SIGINT, Handler);
-
+// ---------- Worker main ----------
+static int32_t WorkerMain(const VibeInputOptions &opts) {
   using namespace sherpa_onnx::cxx; // NOLINT
 
-  // Defaults per current code
-  std::string vad_model_name = "silero_vad.int8.onnx";
-  std::string asr_model_name = "model.int8.onnx";
-  std::string tokens_name = "tokens.txt";
-
-  for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i] ? std::string(argv[i]) : std::string();
-    if (arg == "--help" || arg == "-h") {
-      PrintUsage(argv[0]);
-      return 0;
-    } else if (arg == "--vad-model" && i + 1 < argc) {
-      vad_model_name = argv[++i];
-    } else if (arg == "--asr-model" && i + 1 < argc) {
-      asr_model_name = argv[++i];
-    } else if (arg == "--tokens" && i + 1 < argc) {
-      tokens_name = argv[++i];
-    } else {
-      std::cerr << "Unknown or incomplete argument: " << arg << "\n";
-      PrintUsage(argv[0]);
-      return -1;
-    }
-  }
+  // Resolve model paths
+  std::string vad_model_name = opts.vad_model.empty() ? std::string("silero_vad.int8.onnx") : opts.vad_model;
+  std::string asr_model_name = opts.asr_model.empty() ? std::string("model.int8.onnx") : opts.asr_model;
+  std::string tokens_name    = opts.tokens.empty()    ? std::string("tokens.txt")            : opts.tokens;
 
   std::string vad_model_path = ResolveModelFile(vad_model_name);
   if (vad_model_path.empty()) {
     std::cerr << "Cannot find VAD model '" << vad_model_name
-        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
   std::string asr_model_path = ResolveModelFile(asr_model_name);
   if (asr_model_path.empty()) {
     std::cerr << "Cannot find ASR model '" << asr_model_name
-        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
   std::string tokens_path = ResolveModelFile(tokens_name);
   if (tokens_path.empty()) {
     std::cerr << "Cannot find tokens file '" << tokens_name
-        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
 
   std::cout << "Using models:\n"
-      << "  VAD:    " << vad_model_path << "\n"
-      << "  ASR:    " << asr_model_path << "\n"
-      << "  Tokens: " << tokens_path << "\n";
+            << "  VAD:    " << vad_model_path << "\n"
+            << "  ASR:    " << asr_model_path << "\n"
+            << "  Tokens: " << tokens_path << "\n";
 
   auto vad = CreateVad(vad_model_path);
   auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
@@ -266,7 +245,7 @@ int32_t main(int argc, char *argv[]) {
   PaDeviceIndex num_devices = Pa_GetDeviceCount();
   if (num_devices == 0) {
     std::cerr << "  If you are using Linux, please try "
-        "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
+                 "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
     return -1;
   }
 
@@ -312,16 +291,16 @@ int32_t main(int argc, char *argv[]) {
 
   std::cout << "Started! Please speak\n";
   std::cout << "  - 停止语音输入 / 停止输入 -> Pause\n"
-      "  - 开启语音输入 / 启动语音输入 -> Resume\n";
+               "  - 开启语音输入 / 启动语音输入 -> Resume\n";
 
-  while (!stop) {
+  while (!g_stop.load()) {
     {
       std::unique_lock<std::mutex> lock(mutex);
-      while (samples_queue.empty() && !stop) {
+      while (samples_queue.empty() && !g_stop.load()) {
         condition_variable.wait(lock);
       }
 
-      if (stop) {
+      if (g_stop.load()) {
         break;
       }
 
@@ -357,8 +336,8 @@ int32_t main(int argc, char *argv[]) {
     auto current_time = std::chrono::steady_clock::now();
     const float elapsed_seconds =
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time -
-          started_time)
-        .count() /
+                                                              started_time)
+            .count() /
         1000.;
 
     if (speech_started && elapsed_seconds > 0.4) {
@@ -368,8 +347,9 @@ int32_t main(int argc, char *argv[]) {
       recognizer.Decode(&stream);
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
+      got_tmp_input(result.text);
       if (!g_paused.load()) {
-        ClearScreen();
+        // ClearScreen(); // Avoid clearing console in GUI app
         std::cout << "recognizer.GetResult tmp=" << result.text << std::endl;
       }
 
@@ -409,6 +389,8 @@ int32_t main(int argc, char *argv[]) {
         }
         std::cout << "typestr=" << result.text << std::endl;
 
+        got_input(text);
+
         typestr_simple(text.c_str());
       } else {
         std::cout << "[PAUSE]=" << result.text << std::endl;
@@ -425,4 +407,32 @@ int32_t main(int argc, char *argv[]) {
   }
 
   return 0;
+}
+
+// ---------- Public API ----------
+void VibeInputStart(const VibeInputOptions &opts) {
+  bool expected = false;
+  if (!g_running.compare_exchange_strong(expected, true)) {
+    std::cerr << "VibeInput already running\n";
+    return;
+  }
+  g_stop.store(false);
+  g_worker = std::thread([opts]() {
+    (void)WorkerMain(opts);
+    g_running.store(false);
+  });
+}
+
+void VibeInputStop() {
+  if (!g_running.load()) return;
+  g_stop.store(true);
+  condition_variable.notify_one();
+  if (g_worker.joinable()) {
+    g_worker.join();
+  }
+  g_running.store(false);
+}
+
+void VibeInputTogglePause(const char *reason) {
+  TogglePause(reason);
 }
