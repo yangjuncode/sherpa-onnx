@@ -23,6 +23,7 @@ bool VibeInputIsPaused();
 
 extern void got_tmp_input(const std::string& txt);
 extern void got_input(const std::string& txt);
+extern void sync_display();
 
 
 

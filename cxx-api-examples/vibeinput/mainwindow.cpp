@@ -15,6 +15,17 @@
 
 MainWindow *g_main_window = nullptr;
 
+void sync_display() {
+  auto w=g_main_window;
+  if (!w) {
+    return;
+  }
+  QMetaObject::invokeMethod(
+      w,
+      [w]() { w->sync_display(); },
+      Qt::QueuedConnection);
+}
+
 void MainWindow::sync_display() {
   if (VibeInputIsPaused()) {
     ui->ptn_pause_resume->setText(tr("Resume"));
