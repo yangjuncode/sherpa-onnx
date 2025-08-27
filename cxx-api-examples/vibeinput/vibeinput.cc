@@ -53,6 +53,7 @@ static bool HandleVoiceCommand(const std::string &text) {
       text.find("停止输入") != std::string::npos) {
     if (!g_paused.load()) {
       g_paused.store(true);
+      sync_display();
       std::cout << "[PAUSE] Paused by voice command\n";
     }
     return true;
@@ -61,6 +62,7 @@ static bool HandleVoiceCommand(const std::string &text) {
       text.find("启动语音输入") != std::string::npos) {
     if (g_paused.load()) {
       g_paused.store(false);
+      sync_display();
       std::cout << "[PAUSE] Resumed by voice command\n";
     }
     return true;
@@ -435,4 +437,5 @@ void VibeInputStop() {
 
 void VibeInputTogglePause(const char *reason) {
   TogglePause(reason);
+  sync_display();
 }
