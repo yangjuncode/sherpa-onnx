@@ -2,6 +2,8 @@
 #include "./ui_mainwindow.h"
 #include "vibeinput.h"
 
+#include "preferenceform.h"
+
 #include <QDateTime>
  #include <QtCore/QObject>
  #include <QApplication>
@@ -99,6 +101,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
   g_main_window = nullptr;
+  if (pref_form_) {
+    pref_form_->deleteLater();
+    pref_form_=nullptr;
+  }
   delete ui;
 }
 
@@ -174,3 +180,15 @@ void MainWindow::on_action_Exit_triggered()
   qApp->exit(0);
 }
 
+
+void MainWindow::on_action_Config_triggered()
+{
+  if (!pref_form_) {
+    pref_form_ = new PreferenceForm(nullptr);
+    pref_form_->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(pref_form_, &QObject::destroyed, this, [this]() { pref_form_ = nullptr; });
+  }
+  pref_form_->show();
+  pref_form_->raise();
+  pref_form_->activateWindow();
+}

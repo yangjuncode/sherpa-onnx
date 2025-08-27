@@ -13,6 +13,8 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+class PreferenceForm; // forward declaration
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -30,6 +32,8 @@ public:
 
     void on_action_Exit_triggered();
 
+    void on_action_Config_triggered();
+
    private:
     Ui::MainWindow *ui;
 
@@ -40,5 +44,8 @@ public:
     QMenu tray_menu_; 
     QIcon icon_active_; // green when capturing
     QIcon icon_paused_; // red when paused
+
+    // Preference dialog/widget
+    PreferenceForm* pref_form_ = nullptr;
 };
 #endif // MAINWINDOW_H
