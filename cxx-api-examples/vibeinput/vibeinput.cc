@@ -31,10 +31,18 @@ std::condition_variable condition_variable;
 std::mutex mutex;
 static std::atomic<bool> g_stop{false};
 // Separate pause states
-static std::atomic<bool> g_hotkey_paused{false};  // full stop of VAD/ASR
-static std::atomic<bool> g_voice_paused{false};   // keep VAD/ASR, block typing
+static std::atomic<bool> g_hotkey_paused{false}; // full stop of VAD/ASR
+static std::atomic<bool> g_voice_paused{false}; // keep VAD/ASR, block typing
 static std::atomic<bool> g_running{false};
 static std::thread g_worker;
+
+#ifdef _WIN32
+const char *NEW_LINE = "\r\n";
+#elseif __APPLE__
+const char *NEW_LINE = "\r";
+#else
+const char *NEW_LINE = "\n";
+#endif
 
 // No SIGINT handler for GUI; stopping is controlled via API
 
@@ -46,8 +54,8 @@ static void ToggleHotkeyPause(const char *reason) {
     g_voice_paused.store(false);
   }
   std::cout << "[HOTKEY] " << (g_hotkey_paused.load() ? "Paused" : "Resumed")
-            << (reason ? std::string(" by ") + reason : std::string())
-            << "\n";
+      << (reason ? std::string(" by ") + reason : std::string())
+      << "\n";
 }
 
 static void ToggleVoicePause(const char *reason) {
@@ -56,8 +64,8 @@ static void ToggleVoicePause(const char *reason) {
   bool now = g_voice_paused.load();
   g_voice_paused.store(!now);
   std::cout << "[VOICE] " << (g_voice_paused.load() ? "Paused" : "Resumed")
-            << (reason ? std::string(" by ") + reason : std::string())
-            << "\n";
+      << (reason ? std::string(" by ") + reason : std::string())
+      << "\n";
 }
 
 static bool HandleVoiceCommand(const std::string &text) {
@@ -233,33 +241,39 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   using namespace sherpa_onnx::cxx; // NOLINT
 
   // Resolve model paths
-  std::string vad_model_name = opts.vad_model.empty() ? std::string("silero_vad.int8.onnx") : opts.vad_model;
-  std::string asr_model_name = opts.asr_model.empty() ? std::string("model.int8.onnx") : opts.asr_model;
-  std::string tokens_name    = opts.tokens.empty()    ? std::string("tokens.txt")            : opts.tokens;
+  std::string vad_model_name = opts.vad_model.empty()
+                                 ? std::string("silero_vad.int8.onnx")
+                                 : opts.vad_model;
+  std::string asr_model_name = opts.asr_model.empty()
+                                 ? std::string("model.int8.onnx")
+                                 : opts.asr_model;
+  std::string tokens_name = opts.tokens.empty()
+                              ? std::string("tokens.txt")
+                              : opts.tokens;
 
   std::string vad_model_path = ResolveModelFile(vad_model_name);
   if (vad_model_path.empty()) {
     std::cerr << "Cannot find VAD model '" << vad_model_name
-              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
   std::string asr_model_path = ResolveModelFile(asr_model_name);
   if (asr_model_path.empty()) {
     std::cerr << "Cannot find ASR model '" << asr_model_name
-              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
   std::string tokens_path = ResolveModelFile(tokens_name);
   if (tokens_path.empty()) {
     std::cerr << "Cannot find tokens file '" << tokens_name
-              << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
 
   std::cout << "Using models:\n"
-            << "  VAD:    " << vad_model_path << "\n"
-            << "  ASR:    " << asr_model_path << "\n"
-            << "  Tokens: " << tokens_path << "\n";
+      << "  VAD:    " << vad_model_path << "\n"
+      << "  ASR:    " << asr_model_path << "\n"
+      << "  Tokens: " << tokens_path << "\n";
 
   auto vad = CreateVad(vad_model_path);
   auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
@@ -269,7 +283,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   PaDeviceIndex num_devices = Pa_GetDeviceCount();
   if (num_devices == 0) {
     std::cerr << "  If you are using Linux, please try "
-                 "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
+        "./build/bin/sense-voice-simulate-streaming-alsa-cxx-api\n";
     return -1;
   }
 
@@ -315,7 +329,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
   std::cout << "Started! Please speak\n";
   std::cout << "  - 停止语音输入 / 停止输入 -> Pause\n"
-               "  - 开启语音输入 / 启动语音输入 -> Resume\n";
+      "  - 开启语音输入 / 启动语音输入 -> Resume\n";
 
   while (!g_stop.load()) {
     // If hotkey-paused, block VAD/ASR entirely; just wait and discard audio
@@ -377,8 +391,8 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
     auto current_time = std::chrono::steady_clock::now();
     const float elapsed_seconds =
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time -
-                                                              started_time)
-            .count() /
+          started_time)
+        .count() /
         1000.;
 
     if (speech_started && elapsed_seconds > 0.4) {
@@ -428,10 +442,54 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
           text.replace(pos, full_stop.size(), ",");
           pos += 1; // advance past the inserted comma
         }
-        std::cout << "typestr=" << result.text << std::endl;
+        // Replace all Chinese commas (，) with English commas
+        const std::string chinese_comma = "，";
+        pos = 0;
+        while ((pos = text.find(chinese_comma, pos)) != std::string::npos) {
+          text.replace(pos, chinese_comma.size(), ",");
+          pos += 1; // advance past the inserted comma
+        }
+
+        // Check last 12 characters for newline commands and replace with platform newline
+        const int max_check_len = 12;
+        std::string last_chars = text.length() > max_check_len
+                                   ? text.substr(text.length() - max_check_len)
+                                   : text;
+
+        // List of newline commands to check for (case insensitive)
+        std::vector<std::string> newline_commands = {
+            "enter", "anter", "entter", "回车", "换行"
+        };
+
+        std::cout << "typestr=" << text << std::endl;
 
         got_input(text);
 
+        bool newline_found = false;
+        for (const auto &cmd : newline_commands) {
+          size_t pos = std::string::npos;
+          // Convert both to lowercase for case-insensitive comparison
+          std::string last_chars_lower = last_chars;
+          std::transform(last_chars_lower.begin(), last_chars_lower.end(),
+                         last_chars_lower.begin(), ::tolower);
+          std::string cmd_lower = cmd;
+          std::transform(cmd_lower.begin(), cmd_lower.end(),
+                         cmd_lower.begin(), ::tolower);
+
+          pos = last_chars_lower.rfind(cmd_lower);
+          if (pos != std::string::npos) {
+            // Found a newline command, replace it with platform newline
+            text.replace(text.length() - (last_chars.length() - pos),
+                         cmd.length(),
+                         "");
+            newline_found = true;
+            break;
+          }
+        }
+
+        if (newline_found) {
+          text.append(NEW_LINE);
+        }
         typestr_simple(text.c_str());
       } else {
         std::cout << "[PAUSE]=" << result.text << std::endl;
