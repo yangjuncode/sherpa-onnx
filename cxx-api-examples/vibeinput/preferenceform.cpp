@@ -28,6 +28,7 @@ void PreferenceForm::on_ptn_save_clicked()
   const QString hotkey = ui->ed_hotkey->text().trimmed();
   settings.setValue(QStringLiteral("pause_hotkey"), hotkey.isEmpty() ? QStringLiteral("F12") : hotkey);
   settings.sync();
+  emit hotkeySaved(hotkey.isEmpty() ? QStringLiteral("F12") : hotkey);
 }
 
 void PreferenceForm::on_ptn_cancel_clicked()

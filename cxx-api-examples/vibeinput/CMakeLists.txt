@@ -4,7 +4,6 @@ project(vibeinput VERSION 0.1 LANGUAGES CXX)
 
 add_subdirectory(typestr)
 
-
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -14,6 +13,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
+
+# Propagate detected Qt major version to the QHotkey subproject
+set(QT_DEFAULT_MAJOR_VERSION ${QT_VERSION_MAJOR} CACHE STRING "Qt version to use (5 or 6)" FORCE)
+
+add_subdirectory(QHotkey)
 
 set(TS_FILES vibeinput_zh_CN.ts)
 
@@ -61,6 +65,7 @@ target_link_libraries(vibeinput PRIVATE
         sherpa-onnx-cxx-api
         portaudio_static
         typestr
+        QHotkey::QHotkey
 )
 
 target_link_libraries(vibeinput PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
