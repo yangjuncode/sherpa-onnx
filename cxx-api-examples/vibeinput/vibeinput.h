@@ -15,11 +15,18 @@ void VibeInputStart(const VibeInputOptions &opts = VibeInputOptions{});
 // Stop the background speech worker and join the thread.
 void VibeInputStop();
 
-// Toggle pause/resume typing by voice; optional reason for logging.
-void VibeInputTogglePause(const char *reason = nullptr);
+// Toggle hotkey pause/resume (full stop of VAD/ASR); optional reason for logging.
+void VibeInputToggleHotkeyPause(const char *reason = nullptr);
 
-// is vibe input paused
+// Toggle voice pause/resume (continue VAD/ASR, only block typing); optional reason for logging.
+void VibeInputToggleVoicePause(const char *reason = nullptr);
+
+// Combined paused state (either hotkey or voice paused)
 bool VibeInputIsPaused();
+
+// Query specific pause states
+bool VibeInputIsHotkeyPaused();
+bool VibeInputIsVoicePaused();
 
 extern void got_tmp_input(const std::string& txt);
 extern void got_input(const std::string& txt);

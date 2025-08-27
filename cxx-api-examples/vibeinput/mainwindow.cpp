@@ -35,17 +35,26 @@ void sync_display() {
 }
 
 void MainWindow::sync_display() {
-  if (VibeInputIsPaused()) {
+  const bool hotkey_paused = VibeInputIsHotkeyPaused();
+  const bool voice_paused = VibeInputIsVoicePaused();
+
+  if (hotkey_paused) {
     ui->ptn_pause_resume->setText(tr("Resume"));
     ui->ptd_tmp->clear();
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
-      tray_icon_.setIcon(icon_paused_);
-      tray_icon_.setToolTip(tr("VibeInput (Paused)"));
+      tray_icon_.setIcon(icon_paused_); // red
+      tray_icon_.setToolTip(tr("VibeInput (Hotkey Paused)"));
+    }
+  } else if (voice_paused) {
+    ui->ptn_pause_resume->setText(tr("Resume"));
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+      tray_icon_.setIcon(icon_voice_paused_); // yellow
+      tray_icon_.setToolTip(tr("VibeInput (Voice Paused)"));
     }
   } else {
     ui->ptn_pause_resume->setText(tr("Pause"));
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
-      tray_icon_.setIcon(icon_active_);
+      tray_icon_.setIcon(icon_active_); // green
       tray_icon_.setToolTip(tr("VibeInput (Listening)"));
     }
   }
@@ -141,6 +150,7 @@ void MainWindow::setup_tray() {
 
   // Build icons
   icon_active_ = make_status_icon(QColor(0, 180, 0)); // green
+  icon_voice_paused_ = make_status_icon(QColor(230, 180, 0)); // yellow
   icon_paused_ = make_status_icon(QColor(200, 0, 0)); // red
 
   // Menu actions
@@ -154,7 +164,7 @@ void MainWindow::setup_tray() {
     this->activateWindow();
   });
   connect(act_toggle, &QAction::triggered, this, [this]() {
-    VibeInputTogglePause("tray click");
+    VibeInputToggleVoicePause("tray click");
   });
   connect(act_quit, &QAction::triggered, this, []() {
     QApplication::quit();
@@ -197,7 +207,7 @@ QIcon MainWindow::make_status_icon(const QColor &fill) const {
 }
 
 void MainWindow::on_ptn_pause_resume_clicked() {
-  VibeInputTogglePause("button click");
+  VibeInputToggleVoicePause("button click");
 
 }
 
@@ -227,7 +237,7 @@ void MainWindow::bind_hotkey(const QString &hotkey_str) {
   if (!hotkey_) {
     hotkey_ = new QHotkey(this);
     connect(hotkey_, &QHotkey::activated, this, [this]() {
-      VibeInputTogglePause("hotkey");
+      VibeInputToggleHotkeyPause("hotkey");
     });
   }
 
