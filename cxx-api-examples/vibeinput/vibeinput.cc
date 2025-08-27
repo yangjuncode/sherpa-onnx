@@ -13,6 +13,8 @@
 #include <filesystem>
 #include <string>
 
+#include "typestr.h"
+
 #include "portaudio.h"       // NOLINT
 // #include "sherpa-display.h"  // NOLINT
 #include "sherpa-onnx/c-api/cxx-api.h"
@@ -51,8 +53,9 @@ static std::string GetHomeDir() {
     return std::string(userprofile);
   const char *homedrive = std::getenv("HOMEDRIVE");
   const char *homepath = std::getenv("HOMEPATH");
-  if (homedrive && homepath) return
-      std::string(homedrive) + std::string(homepath);
+  if (homedrive && homepath)
+    return
+        std::string(homedrive) + std::string(homepath);
   return std::string();
 }
 
@@ -98,6 +101,15 @@ static std::string ResolveModelFile(const std::string &input_name) {
   }
 
   return std::string();
+}
+
+static void ClearScreen() {
+#ifdef _MSC_VER
+  auto ret = system("cls");
+#else
+  auto ret = system("clear");
+#endif
+  (void)ret;
 }
 
 static void PrintUsage(const char *prog) {
@@ -311,6 +323,7 @@ int32_t main(int argc, char *argv[]) {
       recognizer.Decode(&stream);
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
+      ClearScreen();
       std::cout << "recognizer.GetResult 1=" << result.text << std::endl;
       // display.UpdateText(result.text);
       // display.Display();
@@ -332,6 +345,8 @@ int32_t main(int argc, char *argv[]) {
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
 
       std::cout << "recognizer.GetResult 2=" << result.text << std::endl;
+
+      typestr_simple(result.text.c_str());
 
       // display.UpdateText(result.text);
       // display.FinalizeCurrentSentence();
