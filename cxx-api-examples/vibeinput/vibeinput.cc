@@ -30,18 +30,34 @@ std::queue<std::vector<float>> samples_queue;
 std::condition_variable condition_variable;
 std::mutex mutex;
 static std::atomic<bool> g_stop{false};
-static std::atomic<bool> g_paused{false};
+// Separate pause states
+static std::atomic<bool> g_hotkey_paused{false};  // full stop of VAD/ASR
+static std::atomic<bool> g_voice_paused{false};   // keep VAD/ASR, block typing
 static std::atomic<bool> g_running{false};
 static std::thread g_worker;
 
 // No SIGINT handler for GUI; stopping is controlled via API
 
-static void TogglePause(const char *reason) {
-  bool now = g_paused.load();
-  g_paused.store(!now);
-  std::cout << "[PAUSE] " << (now ? "Paused" : "Resumed")
-      << (reason ? std::string(" by ") + reason : std::string())
-      << "\n";
+static void ToggleHotkeyPause(const char *reason) {
+  bool now = g_hotkey_paused.load();
+  g_hotkey_paused.store(!now);
+  // When hotkey-paused, also clear voice pause to avoid ambiguity
+  if (g_hotkey_paused.load()) {
+    g_voice_paused.store(false);
+  }
+  std::cout << "[HOTKEY] " << (g_hotkey_paused.load() ? "Paused" : "Resumed")
+            << (reason ? std::string(" by ") + reason : std::string())
+            << "\n";
+}
+
+static void ToggleVoicePause(const char *reason) {
+  // Voice pause only toggles the voice state; if hotkey-paused, ignore
+  if (g_hotkey_paused.load()) return;
+  bool now = g_voice_paused.load();
+  g_voice_paused.store(!now);
+  std::cout << "[VOICE] " << (g_voice_paused.load() ? "Paused" : "Resumed")
+            << (reason ? std::string(" by ") + reason : std::string())
+            << "\n";
 }
 
 static bool HandleVoiceCommand(const std::string &text) {
@@ -51,19 +67,19 @@ static bool HandleVoiceCommand(const std::string &text) {
   //   Resume: "开启语音输入" / "启动语音输入"
   if (text.find("停止语音输入") != std::string::npos ||
       text.find("停止输入") != std::string::npos) {
-    if (!g_paused.load()) {
-      g_paused.store(true);
+    if (!g_voice_paused.load() && !g_hotkey_paused.load()) {
+      g_voice_paused.store(true);
       sync_display();
-      std::cout << "[PAUSE] Paused by voice command\n";
+      std::cout << "[VOICE] Paused by voice command\n";
     }
     return true;
   }
   if (text.find("开启语音输入") != std::string::npos ||
       text.find("启动语音输入") != std::string::npos) {
-    if (g_paused.load()) {
-      g_paused.store(false);
+    if (g_voice_paused.load() && !g_hotkey_paused.load()) {
+      g_voice_paused.store(false);
       sync_display();
-      std::cout << "[PAUSE] Resumed by voice command\n";
+      std::cout << "[VOICE] Resumed by voice command\n";
     }
     return true;
   }
@@ -152,8 +168,11 @@ static void ClearScreen() {
 }
 
 bool VibeInputIsPaused() {
-  return g_paused.load();
+  return g_hotkey_paused.load() || g_voice_paused.load();
 }
+
+bool VibeInputIsHotkeyPaused() { return g_hotkey_paused.load(); }
+bool VibeInputIsVoicePaused() { return g_voice_paused.load(); }
 
 static void PrintUsage(const char *prog) {
   std::cout << "Usage: " << prog
@@ -296,6 +315,23 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
                "  - 开启语音输入 / 启动语音输入 -> Resume\n";
 
   while (!g_stop.load()) {
+    // If hotkey-paused, block VAD/ASR entirely; just wait and discard audio
+    if (g_hotkey_paused.load()) {
+      // Drain queue quickly to avoid unbounded growth
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        if (samples_queue.empty() && !g_stop.load()) {
+          condition_variable.wait(lock);
+        }
+        while (!samples_queue.empty()) samples_queue.pop();
+      }
+      // Reset working buffers
+      buffer.clear();
+      offset = 0;
+      speech_started = false;
+      // Continue loop without any VAD/ASR work
+      continue;
+    }
     {
       std::unique_lock<std::mutex> lock(mutex);
       while (samples_queue.empty() && !g_stop.load()) {
@@ -350,7 +386,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
       got_tmp_input(result.text);
-      if (!g_paused.load()) {
+      if (!VibeInputIsPaused()) {
         // ClearScreen(); // Avoid clearing console in GUI app
         std::cout << "recognizer.GetResult tmp=" << result.text << std::endl;
       }
@@ -378,7 +414,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
       (void)HandleVoiceCommand(result.text);
 
-      if (!g_paused.load()) {
+      if (!VibeInputIsPaused()) {
         // Replace the UTF-8 Chinese full stop (E3 80 82) with a comma.
         // std::replace works on single bytes; '。' is a multibyte UTF-8 sequence,
         // so we must replace the substring instead of a single char.
@@ -435,7 +471,12 @@ void VibeInputStop() {
   g_running.store(false);
 }
 
-void VibeInputTogglePause(const char *reason) {
-  TogglePause(reason);
+void VibeInputToggleHotkeyPause(const char *reason) {
+  ToggleHotkeyPause(reason);
+  sync_display();
+}
+
+void VibeInputToggleVoicePause(const char *reason) {
+  ToggleVoicePause(reason);
   sync_display();
 }

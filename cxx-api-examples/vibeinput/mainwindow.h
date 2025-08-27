@@ -43,8 +43,9 @@ public:
     QIcon make_status_icon(const QColor &fill) const;
     QSystemTrayIcon tray_icon_; 
     QMenu tray_menu_; 
-    QIcon icon_active_; // green when capturing
-    QIcon icon_paused_; // red when paused
+    QIcon icon_active_;        // green when capturing
+    QIcon icon_voice_paused_;  // yellow when voice-paused (VAD/ASR running)
+    QIcon icon_paused_;        // red when hotkey-paused (VAD/ASR stopped)
 
     // Preference dialog/widget
     PreferenceForm* pref_form_ = nullptr;
