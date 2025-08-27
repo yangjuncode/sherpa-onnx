@@ -394,25 +394,24 @@ int32_t main(int argc, char *argv[]) {
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
 
-      std::cout << "recognizer.GetResult 2=" << result.text << std::endl;
+      (void)HandleVoiceCommand(result.text);
 
-      // If it's a voice command, handle it and skip typing
-      if (!HandleVoiceCommand(result.text)) {
-        if (!g_paused.load()) {
-          // Replace the UTF-8 Chinese full stop (E3 80 82) with a comma.
-          // std::replace works on single bytes; '。' is a multibyte UTF-8 sequence,
-          // so we must replace the substring instead of a single char.
-          std::string text = result.text;
-          const std::string full_stop = "\xE3\x80\x82";  // "。"
-          size_t pos = 0;
-          while ((pos = text.find(full_stop, pos)) != std::string::npos) {
-            text.replace(pos, full_stop.size(), ",");
-            pos += 1;  // advance past the inserted comma
-          }
-          typestr_simple(text.c_str());
-        } else {
-          std::cout << "[PAUSE] Typing suppressed (paused).\n";
+      if (!g_paused.load()) {
+        // Replace the UTF-8 Chinese full stop (E3 80 82) with a comma.
+        // std::replace works on single bytes; '。' is a multibyte UTF-8 sequence,
+        // so we must replace the substring instead of a single char.
+        std::string text = result.text;
+        const std::string full_stop = "\xE3\x80\x82"; // "。"
+        size_t pos = 0;
+        while ((pos = text.find(full_stop, pos)) != std::string::npos) {
+          text.replace(pos, full_stop.size(), ",");
+          pos += 1; // advance past the inserted comma
         }
+        std::cout << "typestr=" << result.text << std::endl;
+
+        typestr_simple(text.c_str());
+      } else {
+        std::cout << "[PAUSE]=" << result.text << std::endl;
       }
 
       // display.UpdateText(result.text);
