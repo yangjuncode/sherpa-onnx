@@ -2,6 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QIcon>
+#include <QColor>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -24,7 +28,17 @@ public:
    private slots:
     void on_ptn_pause_resume_clicked();
 
+    void on_action_Exit_triggered();
+
    private:
     Ui::MainWindow *ui;
+
+    // System tray support
+    void setup_tray();
+    QIcon make_status_icon(const QColor &fill) const;
+    QSystemTrayIcon tray_icon_; 
+    QMenu tray_menu_; 
+    QIcon icon_active_; // green when capturing
+    QIcon icon_paused_; // red when paused
 };
 #endif // MAINWINDOW_H

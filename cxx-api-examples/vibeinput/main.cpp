@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <iostream>
+
 #include "vibeinput.h"
 
 int main(int argc, char *argv[])
@@ -26,6 +28,8 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
     int ret = a.exec();
+
+  std::cout <<" qt has exit...\n";
 
     // Stop the speech worker cleanly on exit
     VibeInputStop();
