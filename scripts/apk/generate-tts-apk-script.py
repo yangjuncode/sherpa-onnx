@@ -118,6 +118,7 @@ def get_piper_models() -> List[TtsModel]:
         TtsModel(model_dir="vits-piper-de_DE-eva_k-x_low"),
         TtsModel(model_dir="vits-piper-de_DE-karlsson-low"),
         TtsModel(model_dir="vits-piper-de_DE-kerstin-low"),
+        TtsModel(model_dir="vits-piper-de_DE-dii-high"),
         TtsModel(model_dir="vits-piper-de_DE-miro-high"),
         #  TtsModel(model_dir="vits-piper-de_DE-mls-medium"),
         TtsModel(model_dir="vits-piper-de_DE-pavoque-low"),
@@ -204,9 +205,11 @@ def get_piper_models() -> List[TtsModel]:
         TtsModel(model_dir="vits-piper-fr_FR-upmc-medium"),
         TtsModel(model_dir="vits-piper-hi_IN-pratham-medium"),
         TtsModel(model_dir="vits-piper-hi_IN-priyamvada-medium"),
+        TtsModel(model_dir="vits-piper-hi_IN-rohan-medium"),
         TtsModel(model_dir="vits-piper-hu_HU-anna-medium"),
         TtsModel(model_dir="vits-piper-hu_HU-berta-medium"),
         TtsModel(model_dir="vits-piper-hu_HU-imre-medium"),
+        TtsModel(model_dir="vits-piper-id_ID-news_tts-medium"),
         TtsModel(model_dir="vits-piper-is_IS-bui-medium"),
         TtsModel(model_dir="vits-piper-is_IS-salka-medium"),
         TtsModel(model_dir="vits-piper-is_IS-steinn-medium"),
@@ -515,7 +518,12 @@ def get_kitten_models() -> List[TtsModel]:
             model_dir="kitten-nano-en-v0_1-fp16",
             model_name="model.fp16.onnx",
             lang="en",
-        )
+        ),
+        TtsModel(
+            model_dir="kitten-nano-en-v0_2-fp16",
+            model_name="model.fp16.onnx",
+            lang="en",
+        ),
     ]
     for m in english_models:
         m.data_dir = f"{m.model_dir}/espeak-ng-data"
