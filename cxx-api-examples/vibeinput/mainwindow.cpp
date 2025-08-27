@@ -15,6 +15,11 @@
 #include <QMenu>
 #include <QColor>
 #include <QPen>
+#include <QSettings>
+#include <QCoreApplication>
+#include <QDir>
+#include <QKeySequence>
+#include <qhotkey.h>
 
 MainWindow *g_main_window = nullptr;
 
@@ -94,12 +99,25 @@ MainWindow::MainWindow(QWidget *parent)
   g_main_window = this;
 
   pref_form_ = new PreferenceForm(nullptr);
+  // Rebind hotkey when user saves
+  QObject::connect(pref_form_, &PreferenceForm::hotkeySaved, this,
+                   [this](const QString &hk) {
+                     bind_hotkey(hk);
+                   });
 
   // Setup system tray
   setup_tray();
 
   // Initial icon state
   sync_display();
+
+  // Load initial hotkey from vibeinput.ini
+  const QString iniPath = QCoreApplication::applicationDirPath() +
+                          QDir::separator() + QStringLiteral("vibeinput.ini");
+  QSettings settings(iniPath, QSettings::IniFormat);
+  const QString hotkey = settings.value(
+      QStringLiteral("pause_hotkey"), QStringLiteral("F12")).toString();
+  bind_hotkey(hotkey);
 }
 
 MainWindow::~MainWindow() {
@@ -107,6 +125,11 @@ MainWindow::~MainWindow() {
   if (pref_form_) {
     pref_form_->deleteLater();
     pref_form_ = nullptr;
+  }
+  if (hotkey_) {
+    hotkey_->setRegistered(false);
+    hotkey_->deleteLater();
+    hotkey_ = nullptr;
   }
   delete ui;
 }
@@ -132,7 +155,6 @@ void MainWindow::setup_tray() {
   });
   connect(act_toggle, &QAction::triggered, this, [this]() {
     VibeInputTogglePause("tray click");
-    sync_display();
   });
   connect(act_quit, &QAction::triggered, this, []() {
     QApplication::quit();
@@ -177,7 +199,6 @@ QIcon MainWindow::make_status_icon(const QColor &fill) const {
 void MainWindow::on_ptn_pause_resume_clicked() {
   VibeInputTogglePause("button click");
 
-  sync_display();
 }
 
 void MainWindow::on_action_Exit_triggered() {
@@ -191,8 +212,50 @@ void MainWindow::on_action_Config_triggered() {
     // pref_form_->setAttribute(Qt::WA_DeleteOnClose, true);
     // connect(pref_form_, &QObject::destroyed, this,
     //         [this]() { pref_form_ = nullptr; });
+    QObject::connect(pref_form_, &PreferenceForm::hotkeySaved, this,
+                     [this](const QString &hk) {
+                       bind_hotkey(hk);
+                     });
   }
   pref_form_->show();
   pref_form_->raise();
   pref_form_->activateWindow();
+}
+
+void MainWindow::bind_hotkey(const QString &hotkey_str) {
+  // Create QHotkey if needed
+  if (!hotkey_) {
+    hotkey_ = new QHotkey(this);
+    connect(hotkey_, &QHotkey::activated, this, [this]() {
+      VibeInputTogglePause("hotkey");
+    });
+  }
+
+  // Unregister any existing
+  hotkey_->setRegistered(false);
+
+  // Interpret as QKeySequence, e.g. "F12" or "Ctrl+Alt+P"
+  const QKeySequence seq(hotkey_str);
+  if (seq.isEmpty()) {
+    tray_icon_.showMessage(tr("Hotkey Error"),
+                           tr("Invalid hotkey: %1").arg(hotkey_str),
+                           QSystemTrayIcon::Warning,
+                           5000);
+    return;
+  }
+  // Register new sequence
+  const bool ok = hotkey_->setShortcut(seq, true);
+  if (!ok || !hotkey_->isRegistered()) {
+    tray_icon_.showMessage(tr("Hotkey Error"),
+                           tr("Failed to register global hotkey: %1").arg(
+                               hotkey_str),
+                           QSystemTrayIcon::Warning,
+                           5000);
+  }
+
+  if (ok && hotkey_->isRegistered()) {
+    tray_icon_.showMessage(tr("Hotkey Registerd"),
+                           tr("Hotkey bind to %1").arg(hotkey_str),
+                           QSystemTrayIcon::Information, 5000);
+  }
 }

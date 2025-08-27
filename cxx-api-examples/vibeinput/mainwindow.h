@@ -14,6 +14,7 @@ class MainWindow;
 QT_END_NAMESPACE
 
 class PreferenceForm; // forward declaration
+class QHotkey; // forward declaration
 
 class MainWindow : public QMainWindow
 {
@@ -47,5 +48,9 @@ public:
 
     // Preference dialog/widget
     PreferenceForm* pref_form_ = nullptr;
+
+    // Global hotkey support
+    QHotkey* hotkey_ = nullptr;
+    void bind_hotkey(const QString& hotkey_str);
 };
 #endif // MAINWINDOW_H

@@ -11,6 +11,9 @@ public:
   explicit PreferenceForm(QWidget* parent = nullptr);
   ~PreferenceForm();
 
+signals:
+  void hotkeySaved(const QString& hotkey);
+
 private slots:
   void on_ptn_save_clicked();
   void on_ptn_cancel_clicked();
