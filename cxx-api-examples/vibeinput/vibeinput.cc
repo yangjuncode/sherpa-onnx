@@ -10,8 +10,18 @@
 #include <vector>
 
 #include <cstring>
+#include <string.h>
+
+#include <algorithm>
 #include <filesystem>
 #include <string>
+#include <thread>
+#include <atomic>
+
+#ifdef HAVE_X11_HOTKEY
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+#endif
 
 #include "typestr.h"
 
@@ -24,11 +34,44 @@ std::queue<std::vector<float>> samples_queue;
 std::condition_variable condition_variable;
 std::mutex mutex;
 bool stop = false;
+static std::atomic<bool> g_paused{false};
 
 static void Handler(int32_t /*sig*/) {
   stop = true;
   condition_variable.notify_one();
   fprintf(stderr, "\nCaught Ctrl + C. Exiting...\n");
+}
+
+static void TogglePause(const char *reason) {
+  bool now = g_paused.load();
+  g_paused.store(!now);
+  std::cout << "[PAUSE] " << (now ? "Paused" : "Resumed")
+      << (reason ? std::string(" by ") + reason : std::string())
+      << "\n";
+}
+
+static bool HandleVoiceCommand(const std::string &text) {
+  // Return true if the text is a pause/resume command and should NOT be typed
+  // Commands (Chinese):
+  //   Pause:  "停止语音输入" / "停止输入"
+  //   Resume: "开启语音输入" / "启动语音输入"
+  if (text.find("停止语音输入") != std::string::npos ||
+      text.find("停止输入") != std::string::npos) {
+    if (!g_paused.load()) {
+      g_paused.store(true);
+      std::cout << "[PAUSE] Paused by voice command\n";
+    }
+    return true;
+  }
+  if (text.find("开启语音输入") != std::string::npos ||
+      text.find("启动语音输入") != std::string::npos) {
+    if (g_paused.load()) {
+      g_paused.store(false);
+      std::cout << "[PAUSE] Resumed by voice command\n";
+    }
+    return true;
+  }
+  return false;
 }
 
 static int32_t RecordCallback(const void *input_buffer,
@@ -169,23 +212,23 @@ int32_t main(int argc, char *argv[]) {
   using namespace sherpa_onnx::cxx; // NOLINT
 
   // Defaults per current code
-  std::string vad_model_name = "silero_vad.onnx";
+  std::string vad_model_name = "silero_vad.int8.onnx";
   std::string asr_model_name = "model.int8.onnx";
   std::string tokens_name = "tokens.txt";
 
   for (int i = 1; i < argc; ++i) {
-    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") ==
-        0) {
+    std::string arg = argv[i] ? std::string(argv[i]) : std::string();
+    if (arg == "--help" || arg == "-h") {
       PrintUsage(argv[0]);
       return 0;
-    } else if (std::strcmp(argv[i], "--vad-model") == 0 && i + 1 < argc) {
+    } else if (arg == "--vad-model" && i + 1 < argc) {
       vad_model_name = argv[++i];
-    } else if (std::strcmp(argv[i], "--asr-model") == 0 && i + 1 < argc) {
+    } else if (arg == "--asr-model" && i + 1 < argc) {
       asr_model_name = argv[++i];
-    } else if (std::strcmp(argv[i], "--tokens") == 0 && i + 1 < argc) {
+    } else if (arg == "--tokens" && i + 1 < argc) {
       tokens_name = argv[++i];
     } else {
-      std::cerr << "Unknown or incomplete argument: " << argv[i] << "\n";
+      std::cerr << "Unknown or incomplete argument: " << arg << "\n";
       PrintUsage(argv[0]);
       return -1;
     }
@@ -268,6 +311,8 @@ int32_t main(int argc, char *argv[]) {
   // SherpaDisplay display;
 
   std::cout << "Started! Please speak\n";
+  std::cout << "  - 停止语音输入 / 停止输入 -> Pause\n"
+      "  - 开启语音输入 / 启动语音输入 -> Resume\n";
 
   while (!stop) {
     {
@@ -323,8 +368,13 @@ int32_t main(int argc, char *argv[]) {
       recognizer.Decode(&stream);
 
       OfflineRecognizerResult result = recognizer.GetResult(&stream);
-      ClearScreen();
-      std::cout << "recognizer.GetResult 1=" << result.text << std::endl;
+      if (!g_paused.load()) {
+        ClearScreen();
+        std::cout << "recognizer.GetResult tmp=" << result.text << std::endl;
+      }
+
+      // Handle voice pause/resume commands; do not type for this branch anyway
+      (void)HandleVoiceCommand(result.text);
       // display.UpdateText(result.text);
       // display.Display();
 
@@ -346,7 +396,24 @@ int32_t main(int argc, char *argv[]) {
 
       std::cout << "recognizer.GetResult 2=" << result.text << std::endl;
 
-      typestr_simple(result.text.c_str());
+      // If it's a voice command, handle it and skip typing
+      if (!HandleVoiceCommand(result.text)) {
+        if (!g_paused.load()) {
+          // Replace the UTF-8 Chinese full stop (E3 80 82) with a comma.
+          // std::replace works on single bytes; '。' is a multibyte UTF-8 sequence,
+          // so we must replace the substring instead of a single char.
+          std::string text = result.text;
+          const std::string full_stop = "\xE3\x80\x82";  // "。"
+          size_t pos = 0;
+          while ((pos = text.find(full_stop, pos)) != std::string::npos) {
+            text.replace(pos, full_stop.size(), ",");
+            pos += 1;  // advance past the inserted comma
+          }
+          typestr_simple(text.c_str());
+        } else {
+          std::cout << "[PAUSE] Typing suppressed (paused).\n";
+        }
+      }
 
       // display.UpdateText(result.text);
       // display.FinalizeCurrentSentence();
