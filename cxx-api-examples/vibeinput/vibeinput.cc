@@ -92,6 +92,9 @@ static int32_t RecordCallback(const void *input_buffer,
                               const PaStreamCallbackTimeInfo * /*time_info*/,
                               PaStreamCallbackFlags /*status_flags*/,
                               void * /*user_data*/) {
+  if (g_hotkey_paused.load()) {
+    return paContinue;
+  }
   std::lock_guard<std::mutex> lock(mutex);
   samples_queue.emplace(
       reinterpret_cast<const float *>(input_buffer),
