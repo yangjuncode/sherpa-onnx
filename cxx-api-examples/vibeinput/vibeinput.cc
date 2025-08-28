@@ -466,19 +466,17 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
         got_input(text);
 
         bool newline_found = false;
+
+        std::string last_chars_lower = last_chars;
+        std::transform(last_chars_lower.begin(), last_chars_lower.end(),
+                       last_chars_lower.begin(), ::tolower);
+
         for (const auto &cmd : newline_commands) {
           size_t pos = std::string::npos;
-          // Convert both to lowercase for case-insensitive comparison
-          std::string last_chars_lower = last_chars;
-          std::transform(last_chars_lower.begin(), last_chars_lower.end(),
-                         last_chars_lower.begin(), ::tolower);
-          std::string cmd_lower = cmd;
-          std::transform(cmd_lower.begin(), cmd_lower.end(),
-                         cmd_lower.begin(), ::tolower);
 
-          pos = last_chars_lower.rfind(cmd_lower);
+          pos = last_chars_lower.rfind(cmd);
           if (pos != std::string::npos) {
-            // Found a newline command, replace it with platform newline
+            // Found a newline command, remove it and set flag
             text.replace(text.length() - (last_chars.length() - pos),
                          cmd.length(),
                          "");
