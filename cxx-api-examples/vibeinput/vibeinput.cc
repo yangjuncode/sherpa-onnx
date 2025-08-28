@@ -26,8 +26,10 @@
 #include "sherpa-onnx/csrc/microphone.h"
 #include "vibeinput.h"
 
-// RNNoise denoiser
+// RNNoise denoiser (optional)
+#ifdef VIBEINPUT_ENABLE_RNNOISE
 #include "rnnoise.h"
+#endif
 
 #ifdef ENABLE_DEBUG_FILE_SAVE
 #include <fstream>
@@ -311,9 +313,14 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       }
     }
   } else if (opts.denoise_method == DenoiseMethod::RNNoise) {
-    // Initialize RNNoise state; RNNoise expects 48kHz frames of 480 samples
+#ifdef VIBEINPUT_ENABLE_RNNOISE
+    // Initialize RNNoise; RNNoise expects 48kHz frames of 480 samples
     dnz = Dnz::RNNoise;
     std::cout << "Denoiser: RNNoise enabled\n";
+#else
+    std::cout << "Denoiser: RNNoise requested but not enabled at build time. Disabled.\n";
+    dnz = Dnz::None;
+#endif
   }else if (opts.denoise_method==DenoiseMethod::None) {
     std::cout<<"Denoiser: None\n";
   }
@@ -384,10 +391,12 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       "  - 开启语音输入 / 启动语音输入 -> Resume\n";
 
   // RNNoise runtime objects (created lazily when used)
+#ifdef VIBEINPUT_ENABLE_RNNOISE
   DenoiseState *rn_state = nullptr;
   int rn_frame = 0;  // typically 480 at 48kHz
   sherpa_onnx::cxx::LinearResampler rn_resamp_up;   // 16k -> 48k
   sherpa_onnx::cxx::LinearResampler rn_resamp_down; // 48k -> 16k
+#endif
 
   while (!g_stop.load()) {
     // If hotkey-paused, block VAD/ASR entirely; just wait and discard audio
@@ -522,6 +531,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
         }
           break;
         case Dnz::RNNoise: {
+#ifdef VIBEINPUT_ENABLE_RNNOISE
           // Lazy init
           if (!rn_state) {
             rn_state = rnnoise_create(nullptr);
@@ -575,16 +585,20 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
           auto back16 = rn_resamp_down.Resample(up48.data(), up48.size(), false);
 
           // Debug save
-          #ifdef ENABLE_DEBUG_FILE_SAVE
+#ifdef ENABLE_DEBUG_FILE_SAVE
           denoised_file.write(reinterpret_cast<const char*>(back16.data()),
                               back16.size() * sizeof(float));
-          #endif
+#endif
 
           // Replace segment with denoised audio
           segment.samples.assign(back16.begin(), back16.end());
+#else
+          // Build-time disabled; keep original samples
+          (void)segment;
+#endif
         }
           break;
-      }
+        }
 
       OfflineStream stream = recognizer.CreateStream();
       stream.AcceptWaveform(sample_rate, segment.samples.data(),
@@ -674,10 +688,12 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 #endif
 
   // Cleanup RNNoise
+#ifdef VIBEINPUT_ENABLE_RNNOISE
   if (rn_state) {
     rnnoise_destroy(rn_state);
     rn_state = nullptr;
   }
+#endif
 
   return 0;
 }
