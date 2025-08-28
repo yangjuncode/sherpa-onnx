@@ -26,6 +26,10 @@
 #include "sherpa-onnx/csrc/microphone.h"
 #include "vibeinput.h"
 
+#ifdef ENABLE_DEBUG_FILE_SAVE
+#include <fstream>
+#endif
+
 std::queue<std::vector<float>> samples_queue;
 std::condition_variable condition_variable;
 std::mutex mutex;
@@ -361,6 +365,15 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
   auto started_time = std::chrono::steady_clock::now();
 
+#ifdef ENABLE_DEBUG_FILE_SAVE
+  // Create output directory if it doesn't exist
+  std::filesystem::create_directories("/tmp/ytmp");
+
+  // Open files in append binary mode
+  std::ofstream orig_file("/tmp/ytmp/orig.raw", std::ios::binary | std::ios::app);
+  std::ofstream denoised_file("/tmp/ytmp/denoise.raw", std::ios::binary | std::ios::app);
+#endif
+
   // SherpaDisplay display;
 
   std::cout << "Started! Please speak\n";
@@ -457,21 +470,45 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
       vad.Pop();
 
+
+      
+#ifdef ENABLE_DEBUG_FILE_SAVE
+      // Save original samples
+      orig_file.write(reinterpret_cast<const char*>(segment.samples.data()),
+                    segment.samples.size() * sizeof(float));
+#endif
+
       //denoise audio segment
-      switch ( dnz){
+      switch (dnz) {
         case Dnz::None:
+#ifdef ENABLE_DEBUG_FILE_SAVE
+          // If no denoising, write original to both files
+          denoised_file.write(reinterpret_cast<const char*>(segment.samples.data()),
+                            segment.samples.size() * sizeof(float));
+#endif
+
           break;
+          
         case Dnz::GTCRN: {
           if (!denoiser) {
             break;
           }
 
-         auto denoisedAudioData= denoiser.get()->Run(segment.samples.data(),segment.samples.size(),sample_rate);
+          auto denoisedAudioData = denoiser.get()->Run(segment.samples.data(),
+                                                    segment.samples.size(),
+                                                    sample_rate);
 
-          std::cout <<" denose sample:"<<segment.samples.size()<<"->"<<denoisedAudioData.samples.size()<<std::endl;
+          std::cout << "denoised sample: " << segment.samples.size() 
+                   << " -> " << denoisedAudioData.samples.size() << std::endl;
+
+#ifdef ENABLE_DEBUG_FILE_SAVE
+          // Save denoised samples
+          denoised_file.write(reinterpret_cast<const char*>(denoisedAudioData.samples.data()),
+                            denoisedAudioData.samples.size() * sizeof(float));
+#endif
 
           segment.samples.assign(denoisedAudioData.samples.begin(),
-                                 denoisedAudioData.samples.end());
+                               denoisedAudioData.samples.end());
 
         }
           break;
@@ -561,6 +598,11 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       speech_started = false;
     }
   }
+
+#ifdef ENABLE_DEBUG_FILE_SAVE
+  orig_file.close();
+  denoised_file.close();
+#endif
 
   return 0;
 }
