@@ -10,6 +10,8 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    // Keep running even if no window is shown initially
+    a.setQuitOnLastWindowClosed(false);
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -26,7 +28,9 @@ int main(int argc, char *argv[])
     VibeInputStart(opts);
 
     MainWindow w;
-    w.show();
+    // Do not show the main window at startup; start minimized to tray
+    w.setWindowState(Qt::WindowMinimized);
+    w.hide();
     int ret = a.exec();
 
   std::cout <<" qt has exit...\n";
