@@ -177,6 +177,7 @@ void MainWindow::setup_tray() {
 
   tray_icon_.setContextMenu(&tray_menu_);
   tray_icon_.setToolTip(tr("VibeInput"));
+  tray_icon_.setIcon(icon_active_);
   tray_icon_.show();
 
   connect(&tray_icon_, &QSystemTrayIcon::activated, this,
