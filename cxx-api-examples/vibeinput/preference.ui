@@ -65,6 +65,44 @@
     <string>Cancel</string>
    </property>
   </widget>
+  <widget class="QLabel" name="lbl_denoise">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>130</y>
+     <width>59</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>denoise</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="cbx_denoise">
+   <property name="geometry">
+    <rect>
+     <x>290</x>
+     <y>120</y>
+     <width>111</width>
+     <height>33</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>rnnoise</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>gtcrn</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>none</string>
+    </property>
+   </item>
+  </widget>
  </widget>
  <resources/>
  <connections/>
