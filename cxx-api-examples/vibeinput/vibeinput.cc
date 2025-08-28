@@ -26,6 +26,9 @@
 #include "sherpa-onnx/csrc/microphone.h"
 #include "vibeinput.h"
 
+// RNNoise denoiser
+#include "rnnoise.h"
+
 #ifdef ENABLE_DEBUG_FILE_SAVE
 #include <fstream>
 #endif
@@ -308,9 +311,9 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       }
     }
   } else if (opts.denoise_method == DenoiseMethod::RNNoise) {
-    // RNNoise stub: currently pass-through
+    // Initialize RNNoise state; RNNoise expects 48kHz frames of 480 samples
     dnz = Dnz::RNNoise;
-    std::cout << "Denoiser: RNNoise (stub pass-through)\n";
+    std::cout << "Denoiser: RNNoise enabled\n";
   }else if (opts.denoise_method==DenoiseMethod::None) {
     std::cout<<"Denoiser: None\n";
   }
@@ -379,6 +382,12 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   std::cout << "Started! Please speak\n";
   std::cout << "  - 停止语音输入 / 停止输入 -> Pause\n"
       "  - 开启语音输入 / 启动语音输入 -> Resume\n";
+
+  // RNNoise runtime objects (created lazily when used)
+  DenoiseState *rn_state = nullptr;
+  int rn_frame = 0;  // typically 480 at 48kHz
+  sherpa_onnx::cxx::LinearResampler rn_resamp_up;   // 16k -> 48k
+  sherpa_onnx::cxx::LinearResampler rn_resamp_down; // 48k -> 16k
 
   while (!g_stop.load()) {
     // If hotkey-paused, block VAD/ASR entirely; just wait and discard audio
@@ -512,8 +521,68 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
         }
           break;
-        case Dnz::RNNoise:
-          //todo impl
+        case Dnz::RNNoise: {
+          // Lazy init
+          if (!rn_state) {
+            rn_state = rnnoise_create(nullptr);
+            rn_frame = rnnoise_get_frame_size(); // expect 480
+
+            // Prepare resamplers: 16k <-> 48k
+            float in_sr = sample_rate;     // 16000
+            float rn_sr = 48000.0f;
+            float min_up = std::min(in_sr, rn_sr);
+            float cutoff_up = 0.99f * 0.5f * min_up;
+            int32_t filt_w = 6;
+            rn_resamp_up = LinearResampler::Create(in_sr, rn_sr, cutoff_up, filt_w);
+
+            float min_dn = std::min(rn_sr, in_sr);
+            float cutoff_dn = 0.99f * 0.5f * min_dn;
+            rn_resamp_down = LinearResampler::Create(rn_sr, in_sr, cutoff_dn, filt_w);
+          }
+
+          if (!rn_state) {
+            break; // safety
+          }
+
+          // 1) Up-sample 16k -> 48k for RNNoise
+          std::vector<float> up48 = rn_resamp_up.Get()
+                                        ? rn_resamp_up.Resample(segment.samples.data(),
+                                                                segment.samples.size(),
+                                                                false)
+                                        : segment.samples; // should not happen
+
+          // 2) Process in-place per rn_frame (float interface)
+          size_t n48 = up48.size();
+          if (rn_frame <= 0) rn_frame = 480; // fallback
+          size_t full = (n48 / static_cast<size_t>(rn_frame)) * static_cast<size_t>(rn_frame);
+
+          // Process complete frames
+          for (size_t i = 0; i < full; i += rn_frame) {
+            rnnoise_process_frame(rn_state, up48.data() + i, up48.data() + i);
+          }
+          // Handle tail by zero-padding to a full frame if any
+          if (n48 > full) {
+            std::vector<float> temp(rn_frame, 0.0f);
+            size_t tail = n48 - full;
+            std::copy(up48.begin() + full, up48.end(), temp.begin());
+            rnnoise_process_frame(rn_state, temp.data(), temp.data());
+            // Append processed tail (without the zero pad)
+            up48.erase(up48.begin() + full, up48.end());
+            up48.insert(up48.end(), temp.begin(), temp.begin() + tail);
+          }
+
+          // 3) Down-sample back 48k -> 16k
+          auto back16 = rn_resamp_down.Resample(up48.data(), up48.size(), false);
+
+          // Debug save
+          #ifdef ENABLE_DEBUG_FILE_SAVE
+          denoised_file.write(reinterpret_cast<const char*>(back16.data()),
+                              back16.size() * sizeof(float));
+          #endif
+
+          // Replace segment with denoised audio
+          segment.samples.assign(back16.begin(), back16.end());
+        }
           break;
       }
 
@@ -603,6 +672,12 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   orig_file.close();
   denoised_file.close();
 #endif
+
+  // Cleanup RNNoise
+  if (rn_state) {
+    rnnoise_destroy(rn_state);
+    rn_state = nullptr;
+  }
 
   return 0;
 }
