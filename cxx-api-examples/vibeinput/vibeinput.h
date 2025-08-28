@@ -3,10 +3,20 @@
 
 #include <string>
 
+enum class DenoiseMethod {
+  None,
+  RNNoise,
+  GTCRN
+};
+
 struct VibeInputOptions {
   std::string vad_model;  // default: "silero_vad.int8.onnx"
   std::string asr_model;  // default: "model.int8.onnx"
   std::string tokens;     // default: "tokens.txt"
+  // Denoise options
+  DenoiseMethod denoise_method = DenoiseMethod::None;
+  // For GTCRN, model path (will be resolved like other models if relative)
+  std::string denoise_model; // default empty means use "gtcrn_simple.onnx"
 };
 
 // Start the background speech worker. No-op if already running.

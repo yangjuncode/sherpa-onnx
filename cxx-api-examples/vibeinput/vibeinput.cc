@@ -275,6 +275,42 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       << "  ASR:    " << asr_model_path << "\n"
       << "  Tokens: " << tokens_path << "\n";
 
+  // Optional denoiser setup
+  enum class Dnz { None, RNNoise, GTCRN };
+  Dnz dnz = Dnz::None;
+  std::unique_ptr<OfflineSpeechDenoiser> denoiser;
+  if (opts.denoise_method == DenoiseMethod::GTCRN) {
+    dnz = Dnz::GTCRN;
+    std::string model_name = opts.denoise_model.empty() ? std::string("gtcrn_simple.onnx") : opts.denoise_model;
+    std::string model_path = ResolveModelFile(model_name);
+    if (model_path.empty()) {
+      std::cerr << "Warning: GTCRN model '" << model_name << "' not found. Denoise disabled.\n";
+      dnz = Dnz::None;
+    } else {
+      OfflineSpeechDenoiserConfig dcfg;
+      dcfg.model.gtcrn.model = model_path.c_str();
+      dcfg.model.num_threads = 1;  // Adjust based on your needs
+      dcfg.model.debug = false;
+      dcfg.model.provider = "cpu";  // or "cuda" if using GPU
+      
+      auto denoiser_ptr = OfflineSpeechDenoiser::Create(dcfg);
+      if (!denoiser_ptr.Get()) {
+        std::cerr << "Warning: Failed to create GTCRN denoiser. Denoise disabled.\n";
+        dnz = Dnz::None;
+      } else {
+        denoiser = std::make_unique<OfflineSpeechDenoiser>(std::move(denoiser_ptr));
+        std::cout << "Denoiser: GTCRN enabled with model: " << model_path << "\n";
+        dnz = Dnz::GTCRN;
+      }
+    }
+  } else if (opts.denoise_method == DenoiseMethod::RNNoise) {
+    // RNNoise stub: currently pass-through
+    dnz = Dnz::RNNoise;
+    std::cout << "Denoiser: RNNoise (stub pass-through)\n";
+  }else if (opts.denoise_method==DenoiseMethod::None) {
+    std::cout<<"Denoiser: None\n";
+  }
+
   auto vad = CreateVad(vad_model_path);
   auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
 
@@ -420,6 +456,29 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       auto segment = vad.Front();
 
       vad.Pop();
+
+      //denoise audio segment
+      switch ( dnz){
+        case Dnz::None:
+          break;
+        case Dnz::GTCRN: {
+          if (!denoiser) {
+            break;
+          }
+
+         auto denoisedAudioData= denoiser.get()->Run(segment.samples.data(),segment.samples.size(),sample_rate);
+
+          std::cout <<" denose sample:"<<segment.samples.size()<<"->"<<denoisedAudioData.samples.size()<<std::endl;
+
+          segment.samples.assign(denoisedAudioData.samples.begin(),
+                                 denoisedAudioData.samples.end());
+
+        }
+          break;
+        case Dnz::RNNoise:
+          //todo impl
+          break;
+      }
 
       OfflineStream stream = recognizer.CreateStream();
       stream.AcceptWaveform(sample_rate, segment.samples.data(),
