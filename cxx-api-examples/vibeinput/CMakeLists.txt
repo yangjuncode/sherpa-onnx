@@ -2,54 +2,59 @@ cmake_minimum_required(VERSION 3.16)
 
 project(vibeinput VERSION 0.1 LANGUAGES CXX)
 
-# ----------------------------------------------------------------------------
-# RNNoise via ExternalProject (local source under rnnoise/)
-# ----------------------------------------------------------------------------
-include(ExternalProject)
+# Option to enable RNNoise denoising feature
+option(VIBEINPUT_ENABLE_RNNOISE "Enable RNNoise denoising (builds bundled rnnoise and enables code)" OFF)
 
-set(RNNOISE_INSTALL_DIR ${CMAKE_BINARY_DIR}/rnnoise)
+if (VIBEINPUT_ENABLE_RNNOISE)
+  # ----------------------------------------------------------------------------
+  # RNNoise via ExternalProject (local source under rnnoise/)
+  # ----------------------------------------------------------------------------
+  include(ExternalProject)
 
-# Platform-aware RNNoise optimization flags
-set(RNNOISE_CONFIGURE_FLAGS --disable-shared --enable-static --disable-examples --disable-doc)
-set(RNNOISE_CFLAGS "-fPIC")
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i.86")
-    list(APPEND RNNOISE_CONFIGURE_FLAGS --enable-x86-rtcd)
-    option(RNNOISE_ENABLE_AVX2 "Enable AVX2 (-mavx2) for RNNoise build (x86 only)" OFF)
-    if (RNNOISE_ENABLE_AVX2)
-        set(RNNOISE_CFLAGS "-O3 -mavx2")
-    endif ()
+  set(RNNOISE_INSTALL_DIR ${CMAKE_BINARY_DIR}/rnnoise)
+
+  # Platform-aware RNNoise optimization flags
+  set(RNNOISE_CONFIGURE_FLAGS --disable-shared --enable-static --disable-examples --disable-doc)
+  set(RNNOISE_CFLAGS "-fPIC")
+  if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i.86")
+      list(APPEND RNNOISE_CONFIGURE_FLAGS --enable-x86-rtcd)
+      option(RNNOISE_ENABLE_AVX2 "Enable AVX2 (-mavx2) for RNNoise build (x86 only)" OFF)
+      if (RNNOISE_ENABLE_AVX2)
+          set(RNNOISE_CFLAGS "-O3 -mavx2")
+      endif ()
+  endif ()
+  string(JOIN " " RNNOISE_CONFIGURE_FLAGS_STR ${RNNOISE_CONFIGURE_FLAGS})
+
+  ExternalProject_Add(rnnoise_project
+          SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/rnnoise
+          DOWNLOAD_COMMAND ""
+
+          # Autotools configure (out-of-source) with platform-aware flags
+          CONFIGURE_COMMAND sh -c "cd <SOURCE_DIR> && ./autogen.sh && cd <BINARY_DIR> && env CFLAGS='${RNNOISE_CFLAGS}' <SOURCE_DIR>/configure  --prefix=<INSTALL_DIR> ${RNNOISE_CONFIGURE_FLAGS_STR}"
+
+          # Build / Install
+          BUILD_COMMAND make
+          INSTALL_COMMAND make install
+
+          # Inform CMake/Ninja that this file will be produced by the ExternalProject
+          INSTALL_BYPRODUCTS ${RNNOISE_INSTALL_DIR}/lib/librnnoise.a
+
+          INSTALL_DIR ${RNNOISE_INSTALL_DIR}
+  )
+
+  # Create IMPORTED static library target for rnnoise
+  file(MAKE_DIRECTORY ${RNNOISE_INSTALL_DIR}/include)
+  file(MAKE_DIRECTORY ${RNNOISE_INSTALL_DIR}/lib)
+  add_library(rnnoise STATIC IMPORTED)
+  set_property(TARGET rnnoise PROPERTY IMPORTED_LOCATION ${RNNOISE_INSTALL_DIR}/lib/librnnoise.a)
+  set_property(TARGET rnnoise PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${RNNOISE_INSTALL_DIR}/include)
+  if (UNIX AND NOT APPLE)
+      set_property(TARGET rnnoise PROPERTY INTERFACE_LINK_LIBRARIES m)
+  endif ()
+
+  # Ensure rnnoise is built before being linked
+  add_dependencies(rnnoise rnnoise_project)
 endif ()
-string(JOIN " " RNNOISE_CONFIGURE_FLAGS_STR ${RNNOISE_CONFIGURE_FLAGS})
-
-ExternalProject_Add(rnnoise_project
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/rnnoise
-        DOWNLOAD_COMMAND ""
-
-        # Autotools configure (out-of-source) with platform-aware flags
-        CONFIGURE_COMMAND sh -c "cd <SOURCE_DIR> && ./autogen.sh && cd <BINARY_DIR> && env CFLAGS='${RNNOISE_CFLAGS}' <SOURCE_DIR>/configure  --prefix=<INSTALL_DIR> ${RNNOISE_CONFIGURE_FLAGS_STR}"
-
-        # Build / Install
-        BUILD_COMMAND make
-        INSTALL_COMMAND make install
-
-        # Inform CMake/Ninja that this file will be produced by the ExternalProject
-        INSTALL_BYPRODUCTS ${RNNOISE_INSTALL_DIR}/lib/librnnoise.a
-
-        INSTALL_DIR ${RNNOISE_INSTALL_DIR}
-)
-
-# Create IMPORTED static library target for rnnoise
-file(MAKE_DIRECTORY ${RNNOISE_INSTALL_DIR}/include)
-file(MAKE_DIRECTORY ${RNNOISE_INSTALL_DIR}/lib)
-add_library(rnnoise STATIC IMPORTED)
-set_property(TARGET rnnoise PROPERTY IMPORTED_LOCATION ${RNNOISE_INSTALL_DIR}/lib/librnnoise.a)
-set_property(TARGET rnnoise PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${RNNOISE_INSTALL_DIR}/include)
-if (UNIX AND NOT APPLE)
-    set_property(TARGET rnnoise PROPERTY INTERFACE_LINK_LIBRARIES m)
-endif ()
-
-# Ensure rnnoise is built before being linked
-add_dependencies(rnnoise rnnoise_project)
 
 add_subdirectory(typestr)
 
@@ -115,14 +120,17 @@ else ()
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 endif ()
 
-add_dependencies(vibeinput rnnoise_project)
+if (VIBEINPUT_ENABLE_RNNOISE)
+  add_dependencies(vibeinput rnnoise_project)
+  target_link_libraries(vibeinput PRIVATE rnnoise)
+  target_compile_definitions(vibeinput PRIVATE VIBEINPUT_ENABLE_RNNOISE)
+endif ()
 
 target_link_libraries(vibeinput PRIVATE
         sherpa-onnx-cxx-api
         portaudio_static
         typestr
         QHotkey::QHotkey
-        rnnoise
 )
 
 target_link_libraries(vibeinput PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
