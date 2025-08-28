@@ -89,12 +89,12 @@
    </property>
    <item>
     <property name="text">
-     <string>rnnoise</string>
+     <string>gtcrn</string>
     </property>
    </item>
    <item>
     <property name="text">
-     <string>gtcrn</string>
+     <string>rnnoise</string>
     </property>
    </item>
    <item>
