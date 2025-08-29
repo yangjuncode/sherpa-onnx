@@ -15,6 +15,7 @@
 #include <QMenu>
 #include <QColor>
 #include <QPen>
+#include <QPainterPath>
 #include <QSettings>
 #include <QCoreApplication>
 #include <QDir>
@@ -203,6 +204,32 @@ QIcon MainWindow::make_status_icon(const QColor &fill) const {
   p.setPen(pen);
   p.setBrush(fill);
   p.drawEllipse(QRect(2, 2, size - 4, size - 4));
+
+  // Draw white microphone glyph centered in the circle
+  const int cx = size / 2;
+  const int cy = size / 2;
+
+  // Microphone body (capsule)
+  const int micW = 6;
+  const int micH = 8;
+  QRect micBody(cx - micW / 2, cy - micH / 2, micW, micH);
+  QPainterPath micPath;
+  micPath.addRoundedRect(micBody, 2, 2);
+  p.setPen(Qt::NoPen);
+  p.setBrush(Qt::white);
+  p.fillPath(micPath, Qt::white);
+
+  // Stem under the microphone body
+  const int stemW = 2;
+  const int stemH = 3;
+  QRect stemRect(cx - stemW / 2, micBody.bottom() - 1, stemW, stemH);
+  p.fillRect(stemRect, Qt::white);
+
+  // Base line
+  p.setPen(QPen(Qt::white, 2, Qt::SolidLine, Qt::RoundCap));
+  const int baseY = stemRect.bottom() + 2;
+  p.drawLine(QPoint(cx - 4, baseY), QPoint(cx + 4, baseY));
+
   p.end();
   return QIcon(pix);
 }
