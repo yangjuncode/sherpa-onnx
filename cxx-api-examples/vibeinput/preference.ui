@@ -103,6 +103,29 @@
     </property>
    </item>
   </widget>
+  <widget class="QCheckBox" name="chk_speaker_identify">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>210</y>
+     <width>85</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>enable speaker identify</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="cbx_speaker">
+   <property name="geometry">
+    <rect>
+     <x>270</x>
+     <y>200</y>
+     <width>80</width>
+     <height>33</height>
+    </rect>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>
