@@ -90,6 +90,8 @@ set(PROJECT_SOURCES
         preferenceform.cpp
         preferenceform.h
         preference.ui
+        preference_manager.cpp
+        preference_manager.h
         ${TS_FILES}
 )
 

@@ -3,6 +3,7 @@
 #include "vibeinput.h"
 
 #include "preferenceform.h"
+#include "preference_manager.h"
 
 #include <QDateTime>
 #include <QtCore/QObject>
@@ -121,12 +122,8 @@ MainWindow::MainWindow(QWidget *parent)
   // Initial icon state
   sync_display();
 
-  // Load initial hotkey from vibeinput.ini
-  const QString iniPath = QCoreApplication::applicationDirPath() +
-                          QDir::separator() + QStringLiteral("vibeinput.ini");
-  QSettings settings(iniPath, QSettings::IniFormat);
-  const QString hotkey = settings.value(
-      QStringLiteral("pause_hotkey"), QStringLiteral("F12")).toString();
+  // Load initial hotkey from PreferenceManager
+  const QString hotkey = PreferenceManager::instance().hotkey();
   bind_hotkey(hotkey);
 }
 
