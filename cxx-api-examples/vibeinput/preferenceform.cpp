@@ -26,6 +26,17 @@ PreferenceForm::PreferenceForm(QWidget *parent)
     else idx = ui->cbx_denoise->findText(QStringLiteral("none"));
   }
   if (idx >= 0) ui->cbx_denoise->setCurrentIndex(idx);
+
+  // Speaker identify toggle and speaker list
+  ui->chk_speaker_identify->setChecked(PreferenceManager::instance().speakerIdentify());
+  ui->cbx_speaker->clear();
+  const auto speakers = PreferenceManager::instance().getAllSpeaker();
+  for (const auto &s : speakers) {
+    ui->cbx_speaker->addItem(s.name);
+  }
+  const QString curName = PreferenceManager::instance().currentSpeakerName();
+  int sidx = ui->cbx_speaker->findText(curName, Qt::MatchFixedString);
+  if (sidx >= 0) ui->cbx_speaker->setCurrentIndex(sidx);
 }
 
 PreferenceForm::~PreferenceForm() {
@@ -39,6 +50,9 @@ void PreferenceForm::on_ptn_save_clicked() {
   // Save denoise method in lower-case string
   const QString denoise = ui->cbx_denoise->currentText().trimmed().toLower();
   PreferenceManager::instance().setDenoiseMethod(denoise);
+  // Save speaker identify and current speaker name
+  PreferenceManager::instance().setSpeakerIdentify(ui->chk_speaker_identify->isChecked());
+  PreferenceManager::instance().setCurrentSpeakerName(ui->cbx_speaker->currentText().trimmed());
   emit hotkeySaved(hotkey.isEmpty() ? QStringLiteral("F12") : hotkey);
 }
 
