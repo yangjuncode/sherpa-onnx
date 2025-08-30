@@ -20,11 +20,15 @@
 
 #include "typestr.h"
 
+#include <QString>
 #include "portaudio.h"       // NOLINT
 // #include "sherpa-display.h"  // NOLINT
 #include "sherpa-onnx/c-api/cxx-api.h"
 #include "sherpa-onnx/csrc/microphone.h"
+#include "sherpa-onnx/csrc/speaker-embedding-extractor.h"
+#include "sherpa-onnx/csrc/speaker-embedding-manager.h"
 #include "vibeinput.h"
+#include "preference_manager.h"
 
 // RNNoise denoiser (optional)
 #ifdef VIBEINPUT_ENABLE_RNNOISE
@@ -328,6 +332,45 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   auto vad = CreateVad(vad_model_path);
   auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
 
+  // Speaker identification (optional)
+  // Model: 3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx
+  const std::string spk_model_name =
+      "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx";
+  const float spk_threshold = 0.5f; // default threshold
+  std::unique_ptr<sherpa_onnx::SpeakerEmbeddingExtractor> spk_extractor;
+  std::unique_ptr<sherpa_onnx::SpeakerEmbeddingManager> spk_manager;
+  do {
+    if (!PreferenceManager::instance().speakerIdentify()) break;
+    std::string spk_model_path = ResolveModelFile(spk_model_name);
+    if (spk_model_path.empty()) {
+      std::cerr << "Speaker model '" << spk_model_name
+                << "' not found. Speaker verification disabled.\n";
+      break;
+    }
+    sherpa_onnx::SpeakerEmbeddingExtractorConfig spk_cfg;
+    spk_cfg.model = spk_model_path;
+    spk_cfg.num_threads = 2;
+    spk_cfg.provider = "cpu";
+    spk_cfg.debug = false;
+    try {
+      spk_extractor = std::make_unique<sherpa_onnx::SpeakerEmbeddingExtractor>(spk_cfg);
+    } catch (...) {
+      std::cerr << "Failed to create SpeakerEmbeddingExtractor. Disabled.\n";
+      spk_extractor.reset();
+      break;
+    }
+    if (!spk_extractor) break;
+    spk_manager = std::make_unique<sherpa_onnx::SpeakerEmbeddingManager>(spk_extractor->Dim());
+    // Load known speakers from PreferenceManager
+    const auto speakers = PreferenceManager::instance().getAllSpeaker();
+    int added = 0;
+    for (const auto &s : speakers) {
+      if ((int)s.embedding.size() != spk_extractor->Dim()) continue;
+      if (spk_manager->Add(s.name.toStdString(), s.embedding.data())) ++added;
+    }
+    std::cout << "Speaker verification: loaded " << added << " speakers\n";
+  } while (false);
+
   sherpa_onnx::Microphone mic;
 
   PaDeviceIndex num_devices = Pa_GetDeviceCount();
@@ -463,6 +506,24 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
         1000.;
 
     if (speech_started && elapsed_seconds > 0.4) {
+      // Optional speaker verification before decoding the interim buffer
+      if (spk_extractor && spk_manager && PreferenceManager::instance().speakerIdentify()) {
+        const QString curName = PreferenceManager::instance().currentSpeakerName();
+        if (!curName.isEmpty() && spk_manager->Contains(curName.toStdString())) {
+          auto s = spk_extractor->CreateStream();
+          s->AcceptWaveform(sample_rate, buffer.data(), buffer.size());
+          s->InputFinished();
+          auto emb = spk_extractor->Compute(s.get());
+          bool ok = spk_manager->Verify(curName.toStdString(), emb.data(), spk_threshold);
+          if (!ok) {
+            std::cout << "[SPK] Rejected interim: not speaker '"
+                      << curName.toStdString() << "'\n";
+            started_time = std::chrono::steady_clock::now();
+            continue; // skip ASR for this interim window
+          }
+        }
+      }
+
       OfflineStream stream = recognizer.CreateStream();
       stream.AcceptWaveform(sample_rate, buffer.data(), buffer.size());
 
