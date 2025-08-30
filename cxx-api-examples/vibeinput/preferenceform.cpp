@@ -4,24 +4,18 @@
 #include <QSettings>
 #include <QCoreApplication>
 #include <QDir>
+#include "preference_manager.h"
 
 PreferenceForm::PreferenceForm(QWidget *parent)
   : QWidget(parent), ui(new Ui::preferenceForm) {
   ui->setupUi(this);
   setWindowTitle(tr("Preference"));
 
-  // Load pause_hotkey from vibeinput.ini next to the executable
-  const QString iniPath = QCoreApplication::applicationDirPath() +
-                          QDir::separator() + QStringLiteral("vibeinput.ini");
-  QSettings settings(iniPath, QSettings::IniFormat);
-  const QString hotkey = settings.value(
-      QStringLiteral("pause_hotkey"), QStringLiteral("F12")).toString();
+  // Populate UI from PreferenceManager
+  const QString hotkey = PreferenceManager::instance().hotkey();
   ui->ed_hotkey->setText(hotkey);
 
-  // Load denoise method: one of "rnnoise", "gtcrn", "none"; default "gtcrn"
-  const QString denoise = settings.value(
-      QStringLiteral("denoise_method"),
-      QStringLiteral("gtcrn")).toString().toLower();
+  const QString denoise = PreferenceManager::instance().denoiseMethod();
   int idx = ui->cbx_denoise->findText(denoise, Qt::MatchFixedString);
   if (idx < 0) {
     // fallback to exact items text
@@ -39,17 +33,12 @@ PreferenceForm::~PreferenceForm() {
 }
 
 void PreferenceForm::on_ptn_save_clicked() {
-  const QString iniPath = QCoreApplication::applicationDirPath() +
-                          QDir::separator() + QStringLiteral("vibeinput.ini");
-  QSettings settings(iniPath, QSettings::IniFormat);
+  // Save via PreferenceManager
   const QString hotkey = ui->ed_hotkey->text().trimmed();
-  settings.setValue(
-      QStringLiteral("pause_hotkey"),
-      hotkey.isEmpty() ? QStringLiteral("F12") : hotkey);
+  PreferenceManager::instance().setHotkey(hotkey);
   // Save denoise method in lower-case string
   const QString denoise = ui->cbx_denoise->currentText().trimmed().toLower();
-  settings.setValue(QStringLiteral("denoise_method"), denoise);
-  settings.sync();
+  PreferenceManager::instance().setDenoiseMethod(denoise);
   emit hotkeySaved(hotkey.isEmpty() ? QStringLiteral("F12") : hotkey);
 }
 

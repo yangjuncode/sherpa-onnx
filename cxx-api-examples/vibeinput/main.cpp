@@ -9,6 +9,7 @@
 #include <QDir>
 
 #include "vibeinput.h"
+#include "preference_manager.h"
 
 int main(int argc, char *argv[])
 {
@@ -26,15 +27,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Start background speech worker with defaults
-    VibeInputOptions opts; // use default model names and tokens
-    // Read denoise setting from vibeinput.ini
-    const QString iniPath = QCoreApplication::applicationDirPath() + QDir::separator() + QStringLiteral("vibeinput.ini");
-    QSettings settings(iniPath, QSettings::IniFormat);
-    const QString denoise = settings.value(QStringLiteral("denoise_method"), QStringLiteral("gtcrn")).toString().toLower();
+    // Load preferences and start background speech worker with them
+    auto &pref = PreferenceManager::instance();
+    pref.load();
+    VibeInputOptions opts; // default model names and tokens
+    const QString denoise = pref.denoiseMethod();
     if (denoise == QLatin1String("gtcrn")) {
         opts.denoise_method = DenoiseMethod::GTCRN;
-        // Optional: allow override of model path later if added to UI; default empty => use built-in default in worker
     } else if (denoise == QLatin1String("rnnoise")) {
         opts.denoise_method = DenoiseMethod::RNNoise;
     } else {
