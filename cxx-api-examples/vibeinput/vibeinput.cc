@@ -414,6 +414,8 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
 
   int32_t offset = 0;
   std::vector<float> buffer;
+  std::vector<float> pre_roll;
+  int32_t pre_roll_max_samples = static_cast<int32_t>(0.2f * sample_rate);
   bool speech_started = false;
 
   auto started_time = std::chrono::steady_clock::now();
@@ -454,6 +456,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       }
       // Reset working buffers
       buffer.clear();
+      pre_roll.clear();
       offset = 0;
       speech_started = false;
       // Continue loop without any VAD/ASR work
@@ -479,6 +482,32 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
       } else {
         auto resampled = resampler.Resample(s.data(), s.size(), false);
         buffer.insert(buffer.end(), resampled.begin(), resampled.end());
+      }
+
+      if (!buffer.empty()) {
+        size_t old_size = buffer.size();
+        // old_size was after insert, so compute start index of new data
+        size_t new_samples = 0;
+        if (!resampler.Get()) {
+          new_samples = s.size();
+        } else {
+          // When resampling, approximate new samples by window_size multiple
+          // Use total buffer size change from previous iteration if needed
+          // Here we conservatively cap by window_size to avoid overshoot
+          new_samples = std::min(static_cast<size_t>(window_size), buffer.size());
+        }
+
+        if (new_samples > 0 && buffer.size() >= new_samples) {
+          const float *new_data = buffer.data() + (buffer.size() - new_samples);
+          pre_roll.insert(pre_roll.end(), new_data, new_data + new_samples);
+          if (pre_roll_max_samples > 0 &&
+              pre_roll.size() > static_cast<size_t>(pre_roll_max_samples)) {
+            pre_roll.erase(
+                pre_roll.begin(),
+                pre_roll.begin() +
+                    (pre_roll.size() - static_cast<size_t>(pre_roll_max_samples)));
+          }
+        }
       }
 
       samples_queue.pop();
@@ -660,6 +689,15 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
         }
           break;
         }
+
+      if (!pre_roll.empty()) {
+        std::vector<float> extended;
+        extended.reserve(pre_roll.size() + segment.samples.size());
+        extended.insert(extended.end(), pre_roll.begin(), pre_roll.end());
+        extended.insert(extended.end(), segment.samples.begin(),
+                        segment.samples.end());
+        segment.samples.swap(extended);
+      }
 
       OfflineStream stream = recognizer.CreateStream();
       stream.AcceptWaveform(sample_rate, segment.samples.data(),
