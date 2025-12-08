@@ -253,14 +253,71 @@ void MainWindow::showPreferenceForm() {
                      });
     QObject::connect(pref_form_, &PreferenceForm::modelSettingsChanged, this,
                      [this]() {
-                       tray_icon_.showMessage(tr("Settings Changed"),
-                           tr("Model settings have been saved. Restart the application to apply changes."),
-                           QSystemTrayIcon::Information, 5000);
+                       restartVibeInput();
                      });
   }
   pref_form_->show();
   pref_form_->raise();
   pref_form_->activateWindow();
+}
+
+void MainWindow::restartVibeInput() {
+  tray_icon_.showMessage(tr("Reloading"),
+      tr("Reloading ASR model with new settings..."),
+      QSystemTrayIcon::Information, 3000);
+
+  // Stop current worker
+  VibeInputStop();
+
+  // Reload preferences and restart
+  auto &pref = PreferenceManager::instance();
+  VibeInputOptions opts;
+
+  // Denoise method
+  const QString denoise = pref.denoiseMethod();
+  if (denoise == QLatin1String("gtcrn")) {
+    opts.denoise_method = DenoiseMethod::GTCRN;
+  } else if (denoise == QLatin1String("rnnoise")) {
+    opts.denoise_method = DenoiseMethod::RNNoise;
+  } else {
+    opts.denoise_method = DenoiseMethod::None;
+  }
+
+  // ASR model type
+  const QString asrType = pref.asrModelType();
+  if (asrType == QLatin1String("fireredasr")) {
+    opts.asr_model_type = AsrModelType::FireRedAsr;
+  } else {
+    opts.asr_model_type = AsrModelType::SenseVoice;
+  }
+
+  // Helper to resolve path with model directory
+  auto resolvePath = [](const QString &dir, const QString &file) -> std::string {
+    if (file.isEmpty()) return std::string();
+    if (!dir.isEmpty() && !file.startsWith('/') && !file.startsWith('~')) {
+      return (dir + QDir::separator() + file).toStdString();
+    }
+    return file.toStdString();
+  };
+
+  // VAD model (shared)
+  opts.vad_model = resolvePath(pref.vadModelDir(), pref.vadModel());
+
+  // Load config based on selected ASR model type
+  if (opts.asr_model_type == AsrModelType::FireRedAsr) {
+    opts.fire_red_encoder = resolvePath(pref.fireRedModelDir(), pref.fireRedEncoder());
+    opts.fire_red_decoder = resolvePath(pref.fireRedModelDir(), pref.fireRedDecoder());
+    opts.tokens = resolvePath(pref.fireRedModelDir(), pref.fireRedTokens());
+  } else {
+    opts.asr_model = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceModel());
+    opts.tokens = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceTokens());
+  }
+
+  VibeInputStart(opts);
+
+  tray_icon_.showMessage(tr("Reloaded"),
+      tr("ASR model reloaded successfully."),
+      QSystemTrayIcon::Information, 3000);
 }
 
 void MainWindow::bind_hotkey(const QString &hotkey_str) {

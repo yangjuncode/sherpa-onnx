@@ -42,6 +42,9 @@ public:
 
     // Show preference form helper
     void showPreferenceForm();
+    
+    // Restart VibeInput with new settings
+    void restartVibeInput();
 
     // System tray support
     void setup_tray();
