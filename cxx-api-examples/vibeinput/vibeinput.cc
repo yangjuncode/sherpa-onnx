@@ -227,13 +227,24 @@ static sherpa_onnx::cxx::VoiceActivityDetector CreateVad(
 }
 
 static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
-    const std::string &asr_model_path, const std::string &tokens_path) {
+    AsrModelType model_type,
+    const std::string &asr_model_path,
+    const std::string &tokens_path,
+    const std::string &fire_red_encoder_path = "",
+    const std::string &fire_red_decoder_path = "") {
   using namespace sherpa_onnx::cxx; // NOLINT
   OfflineRecognizerConfig config;
 
-  config.model_config.sense_voice.model = asr_model_path;
-  config.model_config.sense_voice.use_itn = true;
-  config.model_config.sense_voice.language = "auto";
+  if (model_type == AsrModelType::FireRedAsr) {
+    config.model_config.fire_red_asr.encoder = fire_red_encoder_path;
+    config.model_config.fire_red_asr.decoder = fire_red_decoder_path;
+    std::cout << "Using FireRedAsr model\n";
+  } else {
+    config.model_config.sense_voice.model = asr_model_path;
+    config.model_config.sense_voice.use_itn = true;
+    config.model_config.sense_voice.language = "auto";
+    std::cout << "Using SenseVoice model\n";
+  }
   config.model_config.tokens = tokens_path;
 
   config.model_config.num_threads = 2;
@@ -257,9 +268,6 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   std::string vad_model_name = opts.vad_model.empty()
                                  ? std::string("silero_vad.int8.onnx")
                                  : opts.vad_model;
-  std::string asr_model_name = opts.asr_model.empty()
-                                 ? std::string("model.int8.onnx")
-                                 : opts.asr_model;
   std::string tokens_name = opts.tokens.empty()
                               ? std::string("tokens.txt")
                               : opts.tokens;
@@ -270,12 +278,6 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
         << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
     return -1;
   }
-  std::string asr_model_path = ResolveModelFile(asr_model_name);
-  if (asr_model_path.empty()) {
-    std::cerr << "Cannot find ASR model '" << asr_model_name
-        << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
-    return -1;
-  }
   std::string tokens_path = ResolveModelFile(tokens_name);
   if (tokens_path.empty()) {
     std::cerr << "Cannot find tokens file '" << tokens_name
@@ -283,10 +285,51 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
     return -1;
   }
 
-  std::cout << "Using models:\n"
-      << "  VAD:    " << vad_model_path << "\n"
-      << "  ASR:    " << asr_model_path << "\n"
-      << "  Tokens: " << tokens_path << "\n";
+  // Resolve ASR model paths based on model type
+  std::string asr_model_path;
+  std::string fire_red_encoder_path;
+  std::string fire_red_decoder_path;
+  
+  if (opts.asr_model_type == AsrModelType::FireRedAsr) {
+    std::string encoder_name = opts.fire_red_encoder.empty()
+                                 ? std::string("encoder.int8.onnx")
+                                 : opts.fire_red_encoder;
+    std::string decoder_name = opts.fire_red_decoder.empty()
+                                 ? std::string("decoder.int8.onnx")
+                                 : opts.fire_red_decoder;
+    fire_red_encoder_path = ResolveModelFile(encoder_name);
+    if (fire_red_encoder_path.empty()) {
+      std::cerr << "Cannot find FireRedAsr encoder '" << encoder_name
+          << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+      return -1;
+    }
+    fire_red_decoder_path = ResolveModelFile(decoder_name);
+    if (fire_red_decoder_path.empty()) {
+      std::cerr << "Cannot find FireRedAsr decoder '" << decoder_name
+          << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+      return -1;
+    }
+    std::cout << "Using models:\n"
+        << "  VAD:     " << vad_model_path << "\n"
+        << "  ASR:     FireRedAsr\n"
+        << "  Encoder: " << fire_red_encoder_path << "\n"
+        << "  Decoder: " << fire_red_decoder_path << "\n"
+        << "  Tokens:  " << tokens_path << "\n";
+  } else {
+    std::string asr_model_name = opts.asr_model.empty()
+                                   ? std::string("model.int8.onnx")
+                                   : opts.asr_model;
+    asr_model_path = ResolveModelFile(asr_model_name);
+    if (asr_model_path.empty()) {
+      std::cerr << "Cannot find ASR model '" << asr_model_name
+          << "' in ./model-dir or ~/model-dir, nor as a valid path.\n";
+      return -1;
+    }
+    std::cout << "Using models:\n"
+        << "  VAD:    " << vad_model_path << "\n"
+        << "  ASR:    " << asr_model_path << "\n"
+        << "  Tokens: " << tokens_path << "\n";
+  }
 
   // Optional denoiser setup
   enum class Dnz { None, RNNoise, GTCRN };
@@ -330,7 +373,9 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   }
 
   auto vad = CreateVad(vad_model_path);
-  auto recognizer = CreateOfflineRecognizer(asr_model_path, tokens_path);
+  auto recognizer = CreateOfflineRecognizer(opts.asr_model_type, asr_model_path,
+                                            tokens_path, fire_red_encoder_path,
+                                            fire_red_decoder_path);
 
   // Speaker identification (optional)
   // Model: 3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx

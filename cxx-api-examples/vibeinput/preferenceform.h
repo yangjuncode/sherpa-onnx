@@ -13,10 +13,12 @@ public:
 
 signals:
   void hotkeySaved(const QString& hotkey);
+  void modelSettingsChanged();
 
 private slots:
   void on_ptn_save_clicked();
   void on_ptn_cancel_clicked();
+  void updateAsrTypeVisibility();
 
 private:
   Ui::preferenceForm* ui;

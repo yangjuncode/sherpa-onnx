@@ -6,126 +6,330 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>569</width>
-    <height>388</height>
+    <width>620</width>
+    <height>580</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Preferences</string>
   </property>
-  <widget class="QLabel" name="lbl_hotkey">
-   <property name="geometry">
-    <rect>
-     <x>120</x>
-     <y>50</y>
-     <width>161</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Pause/Resume Hotkey</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="ed_hotkey">
-   <property name="geometry">
-    <rect>
-     <x>290</x>
-     <y>50</y>
-     <width>113</width>
-     <height>33</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>F12</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="ptn_save">
-   <property name="geometry">
-    <rect>
-     <x>160</x>
-     <y>320</y>
-     <width>88</width>
-     <height>36</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Save</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="ptn_cancel">
-   <property name="geometry">
-    <rect>
-     <x>270</x>
-     <y>320</y>
-     <width>88</width>
-     <height>36</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Cancel</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="lbl_denoise">
-   <property name="geometry">
-    <rect>
-     <x>140</x>
-     <y>130</y>
-     <width>59</width>
-     <height>19</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>denoise</string>
-   </property>
-  </widget>
-  <widget class="QComboBox" name="cbx_denoise">
-   <property name="geometry">
-    <rect>
-     <x>290</x>
-     <y>120</y>
-     <width>111</width>
-     <height>33</height>
-    </rect>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <property name="text">
-     <string>gtcrn</string>
-    </property>
+    <widget class="QGroupBox" name="grp_general">
+     <property name="title">
+      <string>General</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_general">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_hotkey">
+        <property name="text">
+         <string>Pause/Resume Hotkey</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="ed_hotkey">
+        <property name="text">
+         <string>F12</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lbl_denoise">
+        <property name="text">
+         <string>Denoise Method</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="cbx_denoise">
+        <item>
+         <property name="text">
+          <string>gtcrn</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>rnnoise</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>none</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <property name="text">
-     <string>rnnoise</string>
-    </property>
+    <widget class="QGroupBox" name="grp_asr_type">
+     <property name="title">
+      <string>ASR Model Selection</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_asr_type">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_asr_type">
+        <property name="text">
+         <string>ASR Model Type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="cbx_asr_type">
+        <item>
+         <property name="text">
+          <string>sensevoice</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>fireredasr</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <property name="text">
-     <string>none</string>
-    </property>
+    <widget class="QGroupBox" name="grp_vad">
+     <property name="title">
+      <string>VAD Model (Shared)</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_vad">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_vad_model_dir">
+        <property name="text">
+         <string>VAD Model Directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="hlay_vad_model_dir">
+        <item>
+         <widget class="QLineEdit" name="ed_vad_model_dir">
+          <property name="placeholderText">
+           <string>~/model-dir or absolute path</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ptn_browse_vad_dir">
+          <property name="text">
+           <string>Browse...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lbl_vad_model">
+        <property name="text">
+         <string>VAD Model File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="ed_vad_model">
+        <property name="text">
+         <string>silero_vad.int8.onnx</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
-  </widget>
-  <widget class="QCheckBox" name="chk_speaker_identify">
-   <property name="geometry">
-    <rect>
-     <x>60</x>
-     <y>210</y>
-     <width>85</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>enable speaker identify</string>
-   </property>
-  </widget>
-  <widget class="QComboBox" name="cbx_speaker">
-   <property name="geometry">
-    <rect>
-     <x>270</x>
-     <y>200</y>
-     <width>80</width>
-     <height>33</height>
-    </rect>
-   </property>
-  </widget>
+   <item>
+    <widget class="QGroupBox" name="grp_sensevoice">
+     <property name="title">
+      <string>SenseVoice Model Configuration</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_sensevoice">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_sensevoice_model_dir">
+        <property name="text">
+         <string>Model Directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="hlay_sensevoice_dir">
+        <item>
+         <widget class="QLineEdit" name="ed_sensevoice_model_dir">
+          <property name="placeholderText">
+           <string>~/model-dir or absolute path</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ptn_browse_sensevoice_dir">
+          <property name="text">
+           <string>Browse...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lbl_sensevoice_model">
+        <property name="text">
+         <string>Model File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="ed_sensevoice_model">
+        <property name="text">
+         <string>model.int8.onnx</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="lbl_sensevoice_tokens">
+        <property name="text">
+         <string>Tokens File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="ed_sensevoice_tokens">
+        <property name="text">
+         <string>tokens.txt</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_fireredasr">
+     <property name="title">
+      <string>FireRedAsr Model Configuration</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_fireredasr">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_firered_model_dir">
+        <property name="text">
+         <string>Model Directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="hlay_firered_dir">
+        <item>
+         <widget class="QLineEdit" name="ed_firered_model_dir">
+          <property name="placeholderText">
+           <string>~/model-dir or absolute path</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ptn_browse_firered_dir">
+          <property name="text">
+           <string>Browse...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lbl_fire_red_encoder">
+        <property name="text">
+         <string>Encoder File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="ed_fire_red_encoder">
+        <property name="text">
+         <string>encoder.int8.onnx</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="lbl_fire_red_decoder">
+        <property name="text">
+         <string>Decoder File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="ed_fire_red_decoder">
+        <property name="text">
+         <string>decoder.int8.onnx</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="lbl_firered_tokens">
+        <property name="text">
+         <string>Tokens File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="ed_firered_tokens">
+        <property name="text">
+         <string>tokens.txt</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_speaker">
+     <property name="title">
+      <string>Speaker Identification</string>
+     </property>
+     <layout class="QHBoxLayout" name="hlay_speaker">
+      <item>
+       <widget class="QCheckBox" name="chk_speaker_identify">
+        <property name="text">
+         <string>Enable Speaker Identify</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbx_speaker"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="hlay_buttons">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="ptn_save">
+       <property name="text">
+        <string>Save</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="ptn_cancel">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>

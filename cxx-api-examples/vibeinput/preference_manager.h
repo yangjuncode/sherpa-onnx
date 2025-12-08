@@ -35,6 +35,34 @@ public:
   QString denoiseMethod() const;
   void setDenoiseMethod(const QString& method);
 
+  // ASR model type: "sensevoice" | "fireredasr"
+  QString asrModelType() const;
+  void setAsrModelType(const QString& type);
+
+  // ---- SenseVoice model config ----
+  QString senseVoiceModelDir() const;
+  void setSenseVoiceModelDir(const QString& dir);
+  QString senseVoiceModel() const;
+  void setSenseVoiceModel(const QString& model);
+  QString senseVoiceTokens() const;
+  void setSenseVoiceTokens(const QString& tokens);
+
+  // ---- FireRedAsr model config ----
+  QString fireRedModelDir() const;
+  void setFireRedModelDir(const QString& dir);
+  QString fireRedEncoder() const;
+  void setFireRedEncoder(const QString& encoder);
+  QString fireRedDecoder() const;
+  void setFireRedDecoder(const QString& decoder);
+  QString fireRedTokens() const;
+  void setFireRedTokens(const QString& tokens);
+
+  // ---- Common VAD model (shared) ----
+  QString vadModel() const;
+  void setVadModel(const QString& model);
+  QString vadModelDir() const;
+  void setVadModelDir(const QString& dir);
+
   // Speaker identify toggle and current speaker name
   bool speakerIdentify() const { return speaker_identify_; }
   void setSpeakerIdentify(bool on);
@@ -54,6 +82,10 @@ signals:
   // Optional: future change notifications
   void hotkeyChanged(const QString& hotkey);
   void denoiseMethodChanged(const QString& method);
+  void asrModelTypeChanged(const QString& type);
+  void senseVoiceConfigChanged();
+  void fireRedConfigChanged();
+  void vadConfigChanged();
   void speakerIdentifyChanged(bool on);
   void currentSpeakerChanged(const QString& name);
   void speakersChanged();
@@ -68,6 +100,23 @@ private:
   QString ini_path_;
   QString hotkey_ = QStringLiteral("F12");
   QString denoise_method_ = QStringLiteral("gtcrn");
+  QString asr_model_type_ = QStringLiteral("sensevoice");
+  
+  // SenseVoice config
+  QString sense_voice_model_dir_;
+  QString sense_voice_model_ = QStringLiteral("model.int8.onnx");
+  QString sense_voice_tokens_ = QStringLiteral("tokens.txt");
+  
+  // FireRedAsr config
+  QString fire_red_model_dir_;
+  QString fire_red_encoder_ = QStringLiteral("encoder.int8.onnx");
+  QString fire_red_decoder_ = QStringLiteral("decoder.int8.onnx");
+  QString fire_red_tokens_ = QStringLiteral("tokens.txt");
+  
+  // VAD config (shared)
+  QString vad_model_dir_;
+  QString vad_model_ = QStringLiteral("silero_vad.int8.onnx");
+  
   bool speaker_identify_ = false;
   QString current_speaker_name_;
 

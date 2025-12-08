@@ -109,12 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   g_main_window = this;
 
-  pref_form_ = new PreferenceForm(nullptr);
-  // Rebind hotkey when user saves
-  QObject::connect(pref_form_, &PreferenceForm::hotkeySaved, this,
-                   [this](const QString &hk) {
-                     bind_hotkey(hk);
-                   });
+  pref_form_ = nullptr; // Created lazily in showPreferenceForm()
 
   // Setup system tray
   setup_tray();
@@ -242,14 +237,25 @@ void MainWindow::on_action_Exit_triggered() {
 
 
 void MainWindow::on_action_Config_triggered() {
+  showPreferenceForm();
+}
+
+void MainWindow::on_action_Model_Settings_triggered() {
+  showPreferenceForm();
+}
+
+void MainWindow::showPreferenceForm() {
   if (!pref_form_) {
     pref_form_ = new PreferenceForm(nullptr);
-    // pref_form_->setAttribute(Qt::WA_DeleteOnClose, true);
-    // connect(pref_form_, &QObject::destroyed, this,
-    //         [this]() { pref_form_ = nullptr; });
     QObject::connect(pref_form_, &PreferenceForm::hotkeySaved, this,
                      [this](const QString &hk) {
                        bind_hotkey(hk);
+                     });
+    QObject::connect(pref_form_, &PreferenceForm::modelSettingsChanged, this,
+                     [this]() {
+                       tray_icon_.showMessage(tr("Settings Changed"),
+                           tr("Model settings have been saved. Restart the application to apply changes."),
+                           QSystemTrayIcon::Information, 5000);
                      });
   }
   pref_form_->show();

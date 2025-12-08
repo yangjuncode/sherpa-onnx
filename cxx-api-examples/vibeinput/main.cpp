@@ -30,7 +30,9 @@ int main(int argc, char *argv[])
     // Load preferences and start background speech worker with them
     auto &pref = PreferenceManager::instance();
     pref.load();
-    VibeInputOptions opts; // default model names and tokens
+    VibeInputOptions opts;
+
+    // Denoise method
     const QString denoise = pref.denoiseMethod();
     if (denoise == QLatin1String("gtcrn")) {
         opts.denoise_method = DenoiseMethod::GTCRN;
@@ -39,6 +41,39 @@ int main(int argc, char *argv[])
     } else {
         opts.denoise_method = DenoiseMethod::None;
     }
+
+    // ASR model type
+    const QString asrType = pref.asrModelType();
+    if (asrType == QLatin1String("fireredasr")) {
+        opts.asr_model_type = AsrModelType::FireRedAsr;
+    } else {
+        opts.asr_model_type = AsrModelType::SenseVoice;
+    }
+
+    // Helper to resolve path with model directory
+    auto resolvePath = [](const QString &dir, const QString &file) -> std::string {
+        if (file.isEmpty()) return std::string();
+        if (!dir.isEmpty() && !file.startsWith('/') && !file.startsWith('~')) {
+            return (dir + QDir::separator() + file).toStdString();
+        }
+        return file.toStdString();
+    };
+
+    // VAD model (shared)
+    opts.vad_model = resolvePath(pref.vadModelDir(), pref.vadModel());
+
+    // Load config based on selected ASR model type
+    if (opts.asr_model_type == AsrModelType::FireRedAsr) {
+        // FireRedAsr config
+        opts.fire_red_encoder = resolvePath(pref.fireRedModelDir(), pref.fireRedEncoder());
+        opts.fire_red_decoder = resolvePath(pref.fireRedModelDir(), pref.fireRedDecoder());
+        opts.tokens = resolvePath(pref.fireRedModelDir(), pref.fireRedTokens());
+    } else {
+        // SenseVoice config
+        opts.asr_model = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceModel());
+        opts.tokens = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceTokens());
+    }
+
     VibeInputStart(opts);
 
     MainWindow w;

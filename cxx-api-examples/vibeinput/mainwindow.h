@@ -34,9 +34,14 @@ public:
     void on_action_Exit_triggered();
 
     void on_action_Config_triggered();
+    
+    void on_action_Model_Settings_triggered();
 
    private:
     Ui::MainWindow *ui;
+
+    // Show preference form helper
+    void showPreferenceForm();
 
     // System tray support
     void setup_tray();

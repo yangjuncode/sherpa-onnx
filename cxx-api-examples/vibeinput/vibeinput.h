@@ -9,10 +9,23 @@ enum class DenoiseMethod {
   GTCRN
 };
 
+enum class AsrModelType {
+  SenseVoice,   // default: SenseVoice model
+  FireRedAsr    // FireRedAsr model (requires encoder + decoder)
+};
+
 struct VibeInputOptions {
   std::string vad_model;  // default: "silero_vad.int8.onnx"
-  std::string asr_model;  // default: "model.int8.onnx"
+  std::string asr_model;  // default: "model.int8.onnx" for SenseVoice
   std::string tokens;     // default: "tokens.txt"
+  
+  // ASR model type selection
+  AsrModelType asr_model_type = AsrModelType::SenseVoice;
+  
+  // FireRedAsr specific: encoder and decoder paths
+  std::string fire_red_encoder;  // e.g., "encoder.int8.onnx"
+  std::string fire_red_decoder;  // e.g., "decoder.int8.onnx"
+  
   // Denoise options
   DenoiseMethod denoise_method = DenoiseMethod::None;
   // For GTCRN, model path (will be resolved like other models if relative)

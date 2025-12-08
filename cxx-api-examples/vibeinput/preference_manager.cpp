@@ -53,6 +53,34 @@ void PreferenceManager::load() {
   }
   denoise_method_ = dm;
 
+  // ASR model type
+  QString amt = settings.value(QStringLiteral("asr_model_type"), asr_model_type_).toString().toLower();
+  if (amt != QLatin1String("sensevoice") && amt != QLatin1String("fireredasr")) {
+    amt = QStringLiteral("sensevoice");
+  }
+  asr_model_type_ = amt;
+
+  // SenseVoice config
+  sense_voice_model_dir_ = settings.value(QStringLiteral("sensevoice_model_dir"), sense_voice_model_dir_).toString();
+  sense_voice_model_ = settings.value(QStringLiteral("sensevoice_model"), sense_voice_model_).toString();
+  if (sense_voice_model_.isEmpty()) sense_voice_model_ = QStringLiteral("model.int8.onnx");
+  sense_voice_tokens_ = settings.value(QStringLiteral("sensevoice_tokens"), sense_voice_tokens_).toString();
+  if (sense_voice_tokens_.isEmpty()) sense_voice_tokens_ = QStringLiteral("tokens.txt");
+
+  // FireRedAsr config
+  fire_red_model_dir_ = settings.value(QStringLiteral("firered_model_dir"), fire_red_model_dir_).toString();
+  fire_red_encoder_ = settings.value(QStringLiteral("firered_encoder"), fire_red_encoder_).toString();
+  if (fire_red_encoder_.isEmpty()) fire_red_encoder_ = QStringLiteral("encoder.int8.onnx");
+  fire_red_decoder_ = settings.value(QStringLiteral("firered_decoder"), fire_red_decoder_).toString();
+  if (fire_red_decoder_.isEmpty()) fire_red_decoder_ = QStringLiteral("decoder.int8.onnx");
+  fire_red_tokens_ = settings.value(QStringLiteral("firered_tokens"), fire_red_tokens_).toString();
+  if (fire_red_tokens_.isEmpty()) fire_red_tokens_ = QStringLiteral("tokens.txt");
+
+  // VAD config
+  vad_model_dir_ = settings.value(QStringLiteral("vad_model_dir"), vad_model_dir_).toString();
+  vad_model_ = settings.value(QStringLiteral("vad_model"), vad_model_).toString();
+  if (vad_model_.isEmpty()) vad_model_ = QStringLiteral("silero_vad.int8.onnx");
+
   // Speaker identify and current speaker name
   speaker_identify_ = settings.value(QStringLiteral("speaker_identify"), speaker_identify_).toBool();
   current_speaker_name_ = settings.value(QStringLiteral("current_speaker"), current_speaker_name_).toString();
@@ -97,6 +125,138 @@ void PreferenceManager::setDenoiseMethod(const QString& method) {
   settings.setValue(QStringLiteral("denoise_method"), denoise_method_);
   settings.sync();
   emit denoiseMethodChanged(denoise_method_);
+}
+
+QString PreferenceManager::asrModelType() const { return asr_model_type_; }
+
+void PreferenceManager::setAsrModelType(const QString& type) {
+  QString t = type.trimmed().toLower();
+  if (t != QLatin1String("sensevoice") && t != QLatin1String("fireredasr")) {
+    t = QStringLiteral("sensevoice");
+  }
+  if (t == asr_model_type_) return;
+  asr_model_type_ = t;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("asr_model_type"), asr_model_type_);
+  settings.sync();
+  emit asrModelTypeChanged(asr_model_type_);
+}
+
+// ---- SenseVoice config ----
+QString PreferenceManager::senseVoiceModelDir() const { return sense_voice_model_dir_; }
+
+void PreferenceManager::setSenseVoiceModelDir(const QString& dir) {
+  QString d = dir.trimmed();
+  if (d == sense_voice_model_dir_) return;
+  sense_voice_model_dir_ = d;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("sensevoice_model_dir"), sense_voice_model_dir_);
+  settings.sync();
+  emit senseVoiceConfigChanged();
+}
+
+QString PreferenceManager::senseVoiceModel() const { return sense_voice_model_; }
+
+void PreferenceManager::setSenseVoiceModel(const QString& model) {
+  QString m = model.trimmed();
+  if (m.isEmpty()) m = QStringLiteral("model.int8.onnx");
+  if (m == sense_voice_model_) return;
+  sense_voice_model_ = m;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("sensevoice_model"), sense_voice_model_);
+  settings.sync();
+  emit senseVoiceConfigChanged();
+}
+
+QString PreferenceManager::senseVoiceTokens() const { return sense_voice_tokens_; }
+
+void PreferenceManager::setSenseVoiceTokens(const QString& tokens) {
+  QString t = tokens.trimmed();
+  if (t.isEmpty()) t = QStringLiteral("tokens.txt");
+  if (t == sense_voice_tokens_) return;
+  sense_voice_tokens_ = t;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("sensevoice_tokens"), sense_voice_tokens_);
+  settings.sync();
+  emit senseVoiceConfigChanged();
+}
+
+// ---- FireRedAsr config ----
+QString PreferenceManager::fireRedModelDir() const { return fire_red_model_dir_; }
+
+void PreferenceManager::setFireRedModelDir(const QString& dir) {
+  QString d = dir.trimmed();
+  if (d == fire_red_model_dir_) return;
+  fire_red_model_dir_ = d;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("firered_model_dir"), fire_red_model_dir_);
+  settings.sync();
+  emit fireRedConfigChanged();
+}
+
+QString PreferenceManager::fireRedEncoder() const { return fire_red_encoder_; }
+
+void PreferenceManager::setFireRedEncoder(const QString& encoder) {
+  QString e = encoder.trimmed();
+  if (e.isEmpty()) e = QStringLiteral("encoder.int8.onnx");
+  if (e == fire_red_encoder_) return;
+  fire_red_encoder_ = e;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("firered_encoder"), fire_red_encoder_);
+  settings.sync();
+  emit fireRedConfigChanged();
+}
+
+QString PreferenceManager::fireRedDecoder() const { return fire_red_decoder_; }
+
+void PreferenceManager::setFireRedDecoder(const QString& decoder) {
+  QString d = decoder.trimmed();
+  if (d.isEmpty()) d = QStringLiteral("decoder.int8.onnx");
+  if (d == fire_red_decoder_) return;
+  fire_red_decoder_ = d;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("firered_decoder"), fire_red_decoder_);
+  settings.sync();
+  emit fireRedConfigChanged();
+}
+
+QString PreferenceManager::fireRedTokens() const { return fire_red_tokens_; }
+
+void PreferenceManager::setFireRedTokens(const QString& tokens) {
+  QString t = tokens.trimmed();
+  if (t.isEmpty()) t = QStringLiteral("tokens.txt");
+  if (t == fire_red_tokens_) return;
+  fire_red_tokens_ = t;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("firered_tokens"), fire_red_tokens_);
+  settings.sync();
+  emit fireRedConfigChanged();
+}
+
+// ---- VAD config ----
+QString PreferenceManager::vadModelDir() const { return vad_model_dir_; }
+
+void PreferenceManager::setVadModelDir(const QString& dir) {
+  QString d = dir.trimmed();
+  if (d == vad_model_dir_) return;
+  vad_model_dir_ = d;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("vad_model_dir"), vad_model_dir_);
+  settings.sync();
+  emit vadConfigChanged();
+}
+
+QString PreferenceManager::vadModel() const { return vad_model_; }
+
+void PreferenceManager::setVadModel(const QString& model) {
+  QString m = model.trimmed();
+  if (m.isEmpty()) m = QStringLiteral("silero_vad.int8.onnx");
+  if (m == vad_model_) return;
+  vad_model_ = m;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("vad_model"), vad_model_);
+  settings.sync();
+  emit vadConfigChanged();
 }
 
 void PreferenceManager::setSpeakerIdentify(bool on) {

@@ -60,9 +60,15 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_Config"/>
     <addaction name="separator"/>
     <addaction name="action_Exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Settings">
+    <property name="title">
+     <string>&amp;Settings</string>
+    </property>
+    <addaction name="action_Config"/>
+    <addaction name="action_Model_Settings"/>
    </widget>
    <widget class="QMenu" name="menu_About">
     <property name="title">
@@ -73,6 +79,7 @@
     <addaction name="action_About"/>
    </widget>
    <addaction name="menu_File"/>
+   <addaction name="menu_Settings"/>
    <addaction name="menu_About"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -93,7 +100,12 @@
   </action>
   <action name="action_Config">
    <property name="text">
-    <string>&amp;Preference</string>
+    <string>&amp;Preferences</string>
+   </property>
+  </action>
+  <action name="action_Model_Settings">
+   <property name="text">
+    <string>&amp;Model Settings</string>
    </property>
   </action>
  </widget>
