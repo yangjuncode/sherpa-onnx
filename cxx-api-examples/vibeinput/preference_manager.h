@@ -46,6 +46,8 @@ public:
   void setSenseVoiceModel(const QString& model);
   QString senseVoiceTokens() const;
   void setSenseVoiceTokens(const QString& tokens);
+  int senseVoiceNumThreads() const;
+  void setSenseVoiceNumThreads(int threads);
 
   // ---- FireRedAsr model config ----
   QString fireRedModelDir() const;
@@ -56,6 +58,8 @@ public:
   void setFireRedDecoder(const QString& decoder);
   QString fireRedTokens() const;
   void setFireRedTokens(const QString& tokens);
+  int fireRedNumThreads() const;
+  void setFireRedNumThreads(int threads);
 
   // ---- Common VAD model (shared) ----
   QString vadModel() const;
@@ -106,12 +110,14 @@ private:
   QString sense_voice_model_dir_;
   QString sense_voice_model_ = QStringLiteral("model.int8.onnx");
   QString sense_voice_tokens_ = QStringLiteral("tokens.txt");
+  int sense_voice_num_threads_ = 2;
   
   // FireRedAsr config
   QString fire_red_model_dir_;
   QString fire_red_encoder_ = QStringLiteral("encoder.int8.onnx");
   QString fire_red_decoder_ = QStringLiteral("decoder.int8.onnx");
   QString fire_red_tokens_ = QStringLiteral("tokens.txt");
+  int fire_red_num_threads_ = 4;
   
   // VAD config (shared)
   QString vad_model_dir_;

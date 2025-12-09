@@ -26,6 +26,9 @@ struct VibeInputOptions {
   std::string fire_red_encoder;  // e.g., "encoder.int8.onnx"
   std::string fire_red_decoder;  // e.g., "decoder.int8.onnx"
   
+  // Number of threads for ASR model inference
+  int num_threads = 4;
+  
   // Denoise options
   DenoiseMethod denoise_method = DenoiseMethod::None;
   // For GTCRN, model path (will be resolved like other models if relative)

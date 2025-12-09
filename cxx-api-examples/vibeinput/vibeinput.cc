@@ -231,7 +231,8 @@ static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
     const std::string &asr_model_path,
     const std::string &tokens_path,
     const std::string &fire_red_encoder_path = "",
-    const std::string &fire_red_decoder_path = "") {
+    const std::string &fire_red_decoder_path = "",
+    int num_threads = 4) {
   using namespace sherpa_onnx::cxx; // NOLINT
   OfflineRecognizerConfig config;
 
@@ -247,8 +248,9 @@ static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
   }
   config.model_config.tokens = tokens_path;
 
-  config.model_config.num_threads = 2;
+  config.model_config.num_threads = num_threads;
   config.model_config.debug = false;
+  std::cout << "Using " << num_threads << " threads for ASR inference\n";
 
   std::cout << "Loading model\n";
   OfflineRecognizer recognizer = OfflineRecognizer::Create(config);
@@ -375,7 +377,7 @@ static int32_t WorkerMain(const VibeInputOptions &opts) {
   auto vad = CreateVad(vad_model_path);
   auto recognizer = CreateOfflineRecognizer(opts.asr_model_type, asr_model_path,
                                             tokens_path, fire_red_encoder_path,
-                                            fire_red_decoder_path);
+                                            fire_red_decoder_path, opts.num_threads);
 
   // Speaker identification (optional)
   // Model: 3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx

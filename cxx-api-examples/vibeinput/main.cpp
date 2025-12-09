@@ -68,10 +68,12 @@ int main(int argc, char *argv[])
         opts.fire_red_encoder = resolvePath(pref.fireRedModelDir(), pref.fireRedEncoder());
         opts.fire_red_decoder = resolvePath(pref.fireRedModelDir(), pref.fireRedDecoder());
         opts.tokens = resolvePath(pref.fireRedModelDir(), pref.fireRedTokens());
+        opts.num_threads = pref.fireRedNumThreads();
     } else {
         // SenseVoice config
         opts.asr_model = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceModel());
         opts.tokens = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceTokens());
+        opts.num_threads = pref.senseVoiceNumThreads();
     }
 
     VibeInputStart(opts);

@@ -66,6 +66,9 @@ void PreferenceManager::load() {
   if (sense_voice_model_.isEmpty()) sense_voice_model_ = QStringLiteral("model.int8.onnx");
   sense_voice_tokens_ = settings.value(QStringLiteral("sensevoice_tokens"), sense_voice_tokens_).toString();
   if (sense_voice_tokens_.isEmpty()) sense_voice_tokens_ = QStringLiteral("tokens.txt");
+  sense_voice_num_threads_ = settings.value(QStringLiteral("sensevoice_num_threads"), sense_voice_num_threads_).toInt();
+  if (sense_voice_num_threads_ < 1) sense_voice_num_threads_ = 1;
+  if (sense_voice_num_threads_ > 32) sense_voice_num_threads_ = 32;
 
   // FireRedAsr config
   fire_red_model_dir_ = settings.value(QStringLiteral("firered_model_dir"), fire_red_model_dir_).toString();
@@ -75,6 +78,9 @@ void PreferenceManager::load() {
   if (fire_red_decoder_.isEmpty()) fire_red_decoder_ = QStringLiteral("decoder.int8.onnx");
   fire_red_tokens_ = settings.value(QStringLiteral("firered_tokens"), fire_red_tokens_).toString();
   if (fire_red_tokens_.isEmpty()) fire_red_tokens_ = QStringLiteral("tokens.txt");
+  fire_red_num_threads_ = settings.value(QStringLiteral("firered_num_threads"), fire_red_num_threads_).toInt();
+  if (fire_red_num_threads_ < 1) fire_red_num_threads_ = 1;
+  if (fire_red_num_threads_ > 32) fire_red_num_threads_ = 32;
 
   // VAD config
   vad_model_dir_ = settings.value(QStringLiteral("vad_model_dir"), vad_model_dir_).toString();
@@ -181,6 +187,19 @@ void PreferenceManager::setSenseVoiceTokens(const QString& tokens) {
   emit senseVoiceConfigChanged();
 }
 
+int PreferenceManager::senseVoiceNumThreads() const { return sense_voice_num_threads_; }
+
+void PreferenceManager::setSenseVoiceNumThreads(int threads) {
+  if (threads < 1) threads = 1;
+  if (threads > 32) threads = 32;
+  if (threads == sense_voice_num_threads_) return;
+  sense_voice_num_threads_ = threads;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("sensevoice_num_threads"), sense_voice_num_threads_);
+  settings.sync();
+  emit senseVoiceConfigChanged();
+}
+
 // ---- FireRedAsr config ----
 QString PreferenceManager::fireRedModelDir() const { return fire_red_model_dir_; }
 
@@ -229,6 +248,19 @@ void PreferenceManager::setFireRedTokens(const QString& tokens) {
   fire_red_tokens_ = t;
   QSettings settings(ini_path_, QSettings::IniFormat);
   settings.setValue(QStringLiteral("firered_tokens"), fire_red_tokens_);
+  settings.sync();
+  emit fireRedConfigChanged();
+}
+
+int PreferenceManager::fireRedNumThreads() const { return fire_red_num_threads_; }
+
+void PreferenceManager::setFireRedNumThreads(int threads) {
+  if (threads < 1) threads = 1;
+  if (threads > 32) threads = 32;
+  if (threads == fire_red_num_threads_) return;
+  fire_red_num_threads_ = threads;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("firered_num_threads"), fire_red_num_threads_);
   settings.sync();
   emit fireRedConfigChanged();
 }

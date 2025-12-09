@@ -200,6 +200,26 @@
         </property>
        </widget>
       </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="lbl_sensevoice_threads">
+        <property name="text">
+         <string>Inference Threads</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="spn_sensevoice_threads">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>32</number>
+        </property>
+        <property name="value">
+         <number>2</number>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -273,6 +293,26 @@
        <widget class="QLineEdit" name="ed_firered_tokens">
         <property name="text">
          <string>tokens.txt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="lbl_firered_threads">
+        <property name="text">
+         <string>Inference Threads</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="spn_firered_threads">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>32</number>
+        </property>
+        <property name="value">
+         <number>4</number>
         </property>
        </widget>
       </item>

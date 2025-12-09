@@ -308,9 +308,11 @@ void MainWindow::restartVibeInput() {
     opts.fire_red_encoder = resolvePath(pref.fireRedModelDir(), pref.fireRedEncoder());
     opts.fire_red_decoder = resolvePath(pref.fireRedModelDir(), pref.fireRedDecoder());
     opts.tokens = resolvePath(pref.fireRedModelDir(), pref.fireRedTokens());
+    opts.num_threads = pref.fireRedNumThreads();
   } else {
     opts.asr_model = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceModel());
     opts.tokens = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceTokens());
+    opts.num_threads = pref.senseVoiceNumThreads();
   }
 
   VibeInputStart(opts);

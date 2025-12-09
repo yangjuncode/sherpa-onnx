@@ -42,12 +42,14 @@ PreferenceForm::PreferenceForm(QWidget *parent)
   ui->ed_sensevoice_model_dir->setText(PreferenceManager::instance().senseVoiceModelDir());
   ui->ed_sensevoice_model->setText(PreferenceManager::instance().senseVoiceModel());
   ui->ed_sensevoice_tokens->setText(PreferenceManager::instance().senseVoiceTokens());
+  ui->spn_sensevoice_threads->setValue(PreferenceManager::instance().senseVoiceNumThreads());
 
   // FireRedAsr config
   ui->ed_firered_model_dir->setText(PreferenceManager::instance().fireRedModelDir());
   ui->ed_fire_red_encoder->setText(PreferenceManager::instance().fireRedEncoder());
   ui->ed_fire_red_decoder->setText(PreferenceManager::instance().fireRedDecoder());
   ui->ed_firered_tokens->setText(PreferenceManager::instance().fireRedTokens());
+  ui->spn_firered_threads->setValue(PreferenceManager::instance().fireRedNumThreads());
 
   // Speaker identify toggle and speaker list
   ui->chk_speaker_identify->setChecked(PreferenceManager::instance().speakerIdentify());
@@ -107,12 +109,14 @@ void PreferenceForm::on_ptn_save_clicked() {
   PreferenceManager::instance().setSenseVoiceModelDir(ui->ed_sensevoice_model_dir->text().trimmed());
   PreferenceManager::instance().setSenseVoiceModel(ui->ed_sensevoice_model->text().trimmed());
   PreferenceManager::instance().setSenseVoiceTokens(ui->ed_sensevoice_tokens->text().trimmed());
+  PreferenceManager::instance().setSenseVoiceNumThreads(ui->spn_sensevoice_threads->value());
 
   // Save FireRedAsr config
   PreferenceManager::instance().setFireRedModelDir(ui->ed_firered_model_dir->text().trimmed());
   PreferenceManager::instance().setFireRedEncoder(ui->ed_fire_red_encoder->text().trimmed());
   PreferenceManager::instance().setFireRedDecoder(ui->ed_fire_red_decoder->text().trimmed());
   PreferenceManager::instance().setFireRedTokens(ui->ed_firered_tokens->text().trimmed());
+  PreferenceManager::instance().setFireRedNumThreads(ui->spn_firered_threads->value());
 
   // Save speaker identify and current speaker name
   PreferenceManager::instance().setSpeakerIdentify(ui->chk_speaker_identify->isChecked());
