@@ -55,7 +55,8 @@ void PreferenceManager::load() {
 
   // ASR model type
   QString amt = settings.value(QStringLiteral("asr_model_type"), asr_model_type_).toString().toLower();
-  if (amt != QLatin1String("sensevoice") && amt != QLatin1String("fireredasr")) {
+  if (amt != QLatin1String("sensevoice") && amt != QLatin1String("fireredasr") &&
+      amt != QLatin1String("paraformer")) {
     amt = QStringLiteral("sensevoice");
   }
   asr_model_type_ = amt;
@@ -81,6 +82,16 @@ void PreferenceManager::load() {
   fire_red_num_threads_ = settings.value(QStringLiteral("firered_num_threads"), fire_red_num_threads_).toInt();
   if (fire_red_num_threads_ < 1) fire_red_num_threads_ = 1;
   if (fire_red_num_threads_ > 32) fire_red_num_threads_ = 32;
+
+  // Paraformer config
+  paraformer_model_dir_ = settings.value(QStringLiteral("paraformer_model_dir"), paraformer_model_dir_).toString();
+  paraformer_model_ = settings.value(QStringLiteral("paraformer_model"), paraformer_model_).toString();
+  if (paraformer_model_.isEmpty()) paraformer_model_ = QStringLiteral("model.int8.onnx");
+  paraformer_tokens_ = settings.value(QStringLiteral("paraformer_tokens"), paraformer_tokens_).toString();
+  if (paraformer_tokens_.isEmpty()) paraformer_tokens_ = QStringLiteral("tokens.txt");
+  paraformer_num_threads_ = settings.value(QStringLiteral("paraformer_num_threads"), paraformer_num_threads_).toInt();
+  if (paraformer_num_threads_ < 1) paraformer_num_threads_ = 1;
+  if (paraformer_num_threads_ > 32) paraformer_num_threads_ = 32;
 
   // VAD config
   vad_model_dir_ = settings.value(QStringLiteral("vad_model_dir"), vad_model_dir_).toString();
@@ -137,7 +148,8 @@ QString PreferenceManager::asrModelType() const { return asr_model_type_; }
 
 void PreferenceManager::setAsrModelType(const QString& type) {
   QString t = type.trimmed().toLower();
-  if (t != QLatin1String("sensevoice") && t != QLatin1String("fireredasr")) {
+  if (t != QLatin1String("sensevoice") && t != QLatin1String("fireredasr") &&
+      t != QLatin1String("paraformer")) {
     t = QStringLiteral("sensevoice");
   }
   if (t == asr_model_type_) return;
@@ -263,6 +275,58 @@ void PreferenceManager::setFireRedNumThreads(int threads) {
   settings.setValue(QStringLiteral("firered_num_threads"), fire_red_num_threads_);
   settings.sync();
   emit fireRedConfigChanged();
+}
+
+// ---- Paraformer config ----
+QString PreferenceManager::paraformerModelDir() const { return paraformer_model_dir_; }
+
+void PreferenceManager::setParaformerModelDir(const QString& dir) {
+  QString d = dir.trimmed();
+  if (d == paraformer_model_dir_) return;
+  paraformer_model_dir_ = d;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("paraformer_model_dir"), paraformer_model_dir_);
+  settings.sync();
+  emit paraformerConfigChanged();
+}
+
+QString PreferenceManager::paraformerModel() const { return paraformer_model_; }
+
+void PreferenceManager::setParaformerModel(const QString& model) {
+  QString m = model.trimmed();
+  if (m.isEmpty()) m = QStringLiteral("model.int8.onnx");
+  if (m == paraformer_model_) return;
+  paraformer_model_ = m;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("paraformer_model"), paraformer_model_);
+  settings.sync();
+  emit paraformerConfigChanged();
+}
+
+QString PreferenceManager::paraformerTokens() const { return paraformer_tokens_; }
+
+void PreferenceManager::setParaformerTokens(const QString& tokens) {
+  QString t = tokens.trimmed();
+  if (t.isEmpty()) t = QStringLiteral("tokens.txt");
+  if (t == paraformer_tokens_) return;
+  paraformer_tokens_ = t;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("paraformer_tokens"), paraformer_tokens_);
+  settings.sync();
+  emit paraformerConfigChanged();
+}
+
+int PreferenceManager::paraformerNumThreads() const { return paraformer_num_threads_; }
+
+void PreferenceManager::setParaformerNumThreads(int threads) {
+  if (threads < 1) threads = 1;
+  if (threads > 32) threads = 32;
+  if (threads == paraformer_num_threads_) return;
+  paraformer_num_threads_ = threads;
+  QSettings settings(ini_path_, QSettings::IniFormat);
+  settings.setValue(QStringLiteral("paraformer_num_threads"), paraformer_num_threads_);
+  settings.sync();
+  emit paraformerConfigChanged();
 }
 
 // ---- VAD config ----

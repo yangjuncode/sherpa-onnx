@@ -88,6 +88,11 @@
           <string>fireredasr</string>
          </property>
         </item>
+        <item>
+         <property name="text">
+          <string>paraformer</string>
+         </property>
+        </item>
        </widget>
       </item>
      </layout>
@@ -313,6 +318,88 @@
         </property>
         <property name="value">
          <number>4</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_paraformer">
+     <property name="title">
+      <string>Paraformer Model Configuration</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_paraformer">
+      <item row="0" column="0">
+       <widget class="QLabel" name="lbl_paraformer_model_dir">
+        <property name="text">
+         <string>Model Directory</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="hlay_paraformer_dir">
+        <item>
+         <widget class="QLineEdit" name="ed_paraformer_model_dir">
+          <property name="placeholderText">
+           <string>~/model-dir or absolute path</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ptn_browse_paraformer_dir">
+          <property name="text">
+           <string>Browse...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lbl_paraformer_model">
+        <property name="text">
+         <string>Model File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="ed_paraformer_model">
+        <property name="text">
+         <string>model.int8.onnx</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="lbl_paraformer_tokens">
+        <property name="text">
+         <string>Tokens File</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="ed_paraformer_tokens">
+        <property name="text">
+         <string>tokens.txt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="lbl_paraformer_threads">
+        <property name="text">
+         <string>Inference Threads</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="spn_paraformer_threads">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>32</number>
+        </property>
+        <property name="value">
+         <number>2</number>
         </property>
        </widget>
       </item>

@@ -46,6 +46,8 @@ int main(int argc, char *argv[])
     const QString asrType = pref.asrModelType();
     if (asrType == QLatin1String("fireredasr")) {
         opts.asr_model_type = AsrModelType::FireRedAsr;
+    } else if (asrType == QLatin1String("paraformer")) {
+        opts.asr_model_type = AsrModelType::Paraformer;
     } else {
         opts.asr_model_type = AsrModelType::SenseVoice;
     }
@@ -69,6 +71,11 @@ int main(int argc, char *argv[])
         opts.fire_red_decoder = resolvePath(pref.fireRedModelDir(), pref.fireRedDecoder());
         opts.tokens = resolvePath(pref.fireRedModelDir(), pref.fireRedTokens());
         opts.num_threads = pref.fireRedNumThreads();
+    } else if (opts.asr_model_type == AsrModelType::Paraformer) {
+        // Paraformer config
+        opts.asr_model = resolvePath(pref.paraformerModelDir(), pref.paraformerModel());
+        opts.tokens = resolvePath(pref.paraformerModelDir(), pref.paraformerTokens());
+        opts.num_threads = pref.paraformerNumThreads();
     } else {
         // SenseVoice config
         opts.asr_model = resolvePath(pref.senseVoiceModelDir(), pref.senseVoiceModel());

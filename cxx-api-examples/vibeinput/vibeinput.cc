@@ -240,6 +240,9 @@ static sherpa_onnx::cxx::OfflineRecognizer CreateOfflineRecognizer(
     config.model_config.fire_red_asr.encoder = fire_red_encoder_path;
     config.model_config.fire_red_asr.decoder = fire_red_decoder_path;
     std::cout << "Using FireRedAsr model\n";
+  } else if (model_type == AsrModelType::Paraformer) {
+    config.model_config.paraformer.model = asr_model_path;
+    std::cout << "Using Paraformer model\n";
   } else {
     config.model_config.sense_voice.model = asr_model_path;
     config.model_config.sense_voice.use_itn = true;

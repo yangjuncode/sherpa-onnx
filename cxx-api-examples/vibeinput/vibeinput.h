@@ -11,7 +11,8 @@ enum class DenoiseMethod {
 
 enum class AsrModelType {
   SenseVoice,   // default: SenseVoice model
-  FireRedAsr    // FireRedAsr model (requires encoder + decoder)
+  FireRedAsr,   // FireRedAsr model (requires encoder + decoder)
+  Paraformer    // Paraformer model (single model file)
 };
 
 struct VibeInputOptions {

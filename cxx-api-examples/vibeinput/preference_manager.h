@@ -61,6 +61,16 @@ public:
   int fireRedNumThreads() const;
   void setFireRedNumThreads(int threads);
 
+  // ---- Paraformer model config ----
+  QString paraformerModelDir() const;
+  void setParaformerModelDir(const QString& dir);
+  QString paraformerModel() const;
+  void setParaformerModel(const QString& model);
+  QString paraformerTokens() const;
+  void setParaformerTokens(const QString& tokens);
+  int paraformerNumThreads() const;
+  void setParaformerNumThreads(int threads);
+
   // ---- Common VAD model (shared) ----
   QString vadModel() const;
   void setVadModel(const QString& model);
@@ -89,6 +99,7 @@ signals:
   void asrModelTypeChanged(const QString& type);
   void senseVoiceConfigChanged();
   void fireRedConfigChanged();
+  void paraformerConfigChanged();
   void vadConfigChanged();
   void speakerIdentifyChanged(bool on);
   void currentSpeakerChanged(const QString& name);
@@ -118,6 +129,12 @@ private:
   QString fire_red_decoder_ = QStringLiteral("decoder.int8.onnx");
   QString fire_red_tokens_ = QStringLiteral("tokens.txt");
   int fire_red_num_threads_ = 4;
+
+  // Paraformer config
+  QString paraformer_model_dir_;
+  QString paraformer_model_ = QStringLiteral("model.int8.onnx");
+  QString paraformer_tokens_ = QStringLiteral("tokens.txt");
+  int paraformer_num_threads_ = 4;
   
   // VAD config (shared)
   QString vad_model_dir_;

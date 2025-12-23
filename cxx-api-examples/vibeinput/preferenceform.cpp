@@ -51,6 +51,12 @@ PreferenceForm::PreferenceForm(QWidget *parent)
   ui->ed_firered_tokens->setText(PreferenceManager::instance().fireRedTokens());
   ui->spn_firered_threads->setValue(PreferenceManager::instance().fireRedNumThreads());
 
+  // Paraformer config
+  ui->ed_paraformer_model_dir->setText(PreferenceManager::instance().paraformerModelDir());
+  ui->ed_paraformer_model->setText(PreferenceManager::instance().paraformerModel());
+  ui->ed_paraformer_tokens->setText(PreferenceManager::instance().paraformerTokens());
+  ui->spn_paraformer_threads->setValue(PreferenceManager::instance().paraformerNumThreads());
+
   // Speaker identify toggle and speaker list
   ui->chk_speaker_identify->setChecked(PreferenceManager::instance().speakerIdentify());
   ui->cbx_speaker->clear();
@@ -77,6 +83,11 @@ PreferenceForm::PreferenceForm(QWidget *parent)
     QString dir = QFileDialog::getExistingDirectory(this, tr("Select FireRedAsr Model Directory"),
         ui->ed_firered_model_dir->text().isEmpty() ? QDir::homePath() : ui->ed_firered_model_dir->text());
     if (!dir.isEmpty()) ui->ed_firered_model_dir->setText(dir);
+  });
+  connect(ui->ptn_browse_paraformer_dir, &QPushButton::clicked, this, [this]() {
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Select Paraformer Model Directory"),
+        ui->ed_paraformer_model_dir->text().isEmpty() ? QDir::homePath() : ui->ed_paraformer_model_dir->text());
+    if (!dir.isEmpty()) ui->ed_paraformer_model_dir->setText(dir);
   });
 
   // Update visibility based on ASR type
@@ -118,6 +129,12 @@ void PreferenceForm::on_ptn_save_clicked() {
   PreferenceManager::instance().setFireRedTokens(ui->ed_firered_tokens->text().trimmed());
   PreferenceManager::instance().setFireRedNumThreads(ui->spn_firered_threads->value());
 
+  // Save Paraformer config
+  PreferenceManager::instance().setParaformerModelDir(ui->ed_paraformer_model_dir->text().trimmed());
+  PreferenceManager::instance().setParaformerModel(ui->ed_paraformer_model->text().trimmed());
+  PreferenceManager::instance().setParaformerTokens(ui->ed_paraformer_tokens->text().trimmed());
+  PreferenceManager::instance().setParaformerNumThreads(ui->spn_paraformer_threads->value());
+
   // Save speaker identify and current speaker name
   PreferenceManager::instance().setSpeakerIdentify(ui->chk_speaker_identify->isChecked());
   PreferenceManager::instance().setCurrentSpeakerName(ui->cbx_speaker->currentText().trimmed());
@@ -133,7 +150,10 @@ void PreferenceForm::on_ptn_cancel_clicked() {
 
 void PreferenceForm::updateAsrTypeVisibility() {
   const QString asrType = ui->cbx_asr_type->currentText().toLower();
+  const bool isSenseVoice = (asrType == QLatin1String("sensevoice"));
   const bool isFireRed = (asrType == QLatin1String("fireredasr"));
-  ui->grp_sensevoice->setVisible(!isFireRed);
+  const bool isParaformer = (asrType == QLatin1String("paraformer"));
+  ui->grp_sensevoice->setVisible(isSenseVoice);
   ui->grp_fireredasr->setVisible(isFireRed);
+  ui->grp_paraformer->setVisible(isParaformer);
 }
